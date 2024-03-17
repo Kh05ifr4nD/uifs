@@ -1,0 +1,158 @@
+import { Button, VerticalBox, LineEdit, HorizontalBox, ComboBox, TabWidget, AboutSlint, TextEdit, StyleMetrics, GroupBox } from "std-widgets.slint";
+import { UIMetrics } from "metrics.slint";
+import { SplitLine } from "split_line.slint";
+
+export component AppWindow inherits Window {
+    in property <[string]> sps <=> sp-box.model;
+    private property <bool> send-ready <=> send-button.checkable;
+    private property <bool> sp-ready <=> open-button.checked;
+    private property <string> sp-name: sps[0];
+    private property <int> mode <=> cipher.current-index;
+    callback sp-open(string) -> bool;
+    callback send-sm3(string);
+    callback send-sm4e(string, string);
+    callback send-sm4d(string, string);
+    icon: @image-url("../resources/icon/icon.png");
+    title: "密码硬件";
+    min-width: UIMetrics.App.min-width;
+    min-height: UIMetrics.App.min-height;
+    TabWidget {
+        Tab {
+            title: "主页";
+            HorizontalLayout {
+                Rectangle {
+                    background: UIMetrics.Sidebar.background;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: StyleMetrics.layout-padding;
+                        padding-right: StyleMetrics.layout-padding;
+                        GroupBox {
+                            title: "串口与设备";
+                            VerticalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                HorizontalLayout {
+                                    height: UIMetrics.line-height;
+                                    spacing: StyleMetrics.layout-spacing;
+                                    Text {
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                        font-size: 1.25rem;
+                                        text: "名称";
+                                    }
+
+                                    // CBC ECB
+
+                                    sp-box := ComboBox {
+                                        width: UIMetrics.box-width;
+                                        selected(sp-name) => {
+                                            root.sp-ready = false;
+                                            root.sp-name = sp-name;
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    height: UIMetrics.line-height;
+                                    spacing: StyleMetrics.layout-spacing;
+                                    Text {
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                        font-size: 1.25rem;
+                                        text: "状态";
+                                    }
+
+                                    open-button := Button {
+                                        checkable: true;
+                                        text: root.sp-ready ? "已连接" : "未打开";
+                                        width: UIMetrics.box-width;
+                                        clicked => {
+                                            root.sp-ready = sp_open(root.sp-name)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        SplitLine { }
+
+                        GroupBox {
+                            padding: 0;
+                            title: "算法";
+                            HorizontalLayout {
+                                height: UIMetrics.line-height;
+                                cipher := ComboBox {
+                                    model: ["SM3 散列", "SM4 加密", "SM4 解密"];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                VerticalBox {
+                    TextEdit {
+                        read-only: true;
+                    }
+
+                    HorizontalBox {
+                        padding: 0;
+                        VerticalBox {
+                            padding: 0;
+                            HorizontalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                Text {
+                                    vertical-alignment: center;
+                                    horizontal-alignment: left;
+                                    font-size: 1.25rem;
+                                    text: root.mode == 2 ? "密文" : "消息";
+                                }
+
+                                pc-line := LineEdit {
+                                    height: UIMetrics.line-height;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                key-line := Text {
+                                    vertical-alignment: center;
+                                    horizontal-alignment: left;
+                                    font-size: 1.25rem;
+                                    text: "密钥";
+                                }
+
+                                LineEdit {
+                                    enabled: mode != 0;
+                                    height: UIMetrics.line-height;
+                                }
+                            }
+                        }
+
+                        send-button := Button {
+                            text: "发\n送";
+                            width: UIMetrics.main-button-width;
+                            height: 1 * StyleMetrics.layout-padding + 2 * UIMetrics.line-height;
+                            clicked => {
+                                if mode == 0 {
+                                    send-sm3(pc-line.text)
+                                } else if mode == 1 {
+                                    send-sm4e(pc-line.text, key-line.text)
+                                } else if mode == 2 {
+                                    send-sm4d(pc-line.text, key-line.text)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Tab {
+            title: "关于";
+            VerticalBox {
+                alignment: center;
+                width: UIMetrics.About.width;
+                AboutSlint { }
+            }
+        }
+    }
+}

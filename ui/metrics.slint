@@ -1,0 +1,29 @@
+import { StyleMetrics } from "std-widgets.slint";
+struct App {
+    min-width:length,
+    min-height:length,
+}
+
+struct SideBar {
+    background:color,
+}
+
+struct About {
+    width:length,
+}
+
+struct SplitLine {
+    color: color,
+    height:length,
+    radius:length,
+}
+
+export global UIMetrics {
+    out property <About> About: { width:256px };
+    out property <App> App: { line-height:35px, min-width:640px, min-height:360px };
+    out property <SideBar> Sidebar: { background:StyleMetrics.window-background.darker(0.2) };
+    out property <SplitLine> SplitLine: { color:StyleMetrics.textedit-background-disabled, height:3px, radius:2px };
+    out property <length> box-width: 175px;
+    out property <length> main-button-width: 80px;
+    out property <length> line-height: 35px;
+}

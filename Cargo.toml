@@ -1,0 +1,44 @@
+# https://doc.rust-lang.org/cargo/reference/manifest.html
+[package]
+name = "suif"
+version = "0.1.0"
+authors = ["meandSSH0219 <meandSSH0219@gmail.com>"]
+edition = "2021"
+rust-version = "1.76.0"
+description = "A simple user interface for FPGA"
+readme = "README.md"
+repository = "https://gitlab.com/meandssh/suif"
+license = "MIT"
+build = "build.rs"
+
+[dependencies]
+mimalloc = { version = "0.1.39" }
+serde = { version = "1.0.196", features = ["derive"] }
+serialport = { version = "4.3.0", default-features = false }
+snafu = { version = "0.8.0" }
+slint = { version = "1.4.1", default-features = false, features = [
+    "compat-1-2",
+] }
+tokio = { version = "1.36.0", features = ["fs", "macros", "rt-multi-thread"] }
+tracing = { version = "0.1.40", default-features = false, features = [
+    "attributes",
+] }
+tracing-appender = { version = "0.2.3", default-features = false }
+tracing-subscriber = { version = "0.3.18", default-features = false, features = [
+    "ansi",
+    "chrono",
+    "parking_lot",
+    "env-filter",
+] }
+
+[build-dependencies]
+slint-build = "1.5.0"
+
+[features]
+default = ["rend-femtovg"]
+rend-soft = ["slint/backend-winit", "slint/renderer-software"]
+rend-femtovg = ["slint/backend-winit", "slint/renderer-femtovg"]
+rend-skia = [
+    "slint/backend-winit",
+    "slint/renderer-skia",
+] # incompatible with aarch64-pc-windows-msvc
