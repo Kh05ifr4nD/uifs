@@ -12,11 +12,11 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
-  outputs = inputs:
-    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = import inputs.systems;
+  outputs = { flake-parts, nixpkgs, rust-overlay, systems, treefmt-nix, ... }@inputs:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = import systems;
       imports = [
-        inputs.treefmt-nix.flakeModule
+        treefmt-nix.flakeModule
       ];
       perSystem = { config, self', pkgs, lib, system, ... }:
         let
@@ -40,28 +40,39 @@
               config.treefmt.build.devShell
             ];
             shellHook = ''
-              # For rust-analyzer 'hover' tooltips to work.
               export RUST_SRC_PATH=${pkgs.rustPlatform.rustLibSrc}
+              # For rust-analyzer 'hover' tooltips to work.
               nu
+              $env.RUST_SRC_PATH = '${pkgs.rustPlatform.rustLibSrc}'
             '';
             buildInputs = with pkgs; [
-              pkg-config
-              python3
+              cargo-cache
+              cargo-machete
+              cargo-unused-features
+              just
+              mold
               rust-bin.stable.latest.default
               sccache
-              fontconfig
-              libxkbcommon
-              libGL
 
-              # WINIT_UNIX_BACKEND=x11
-              xorg.libXcursor
-              xorg.libXrandr
-              xorg.libXi
-              xorg.libX11
+              fontconfig
+
+              libGL
+              libxkbcommon
+              python3
+
+              pkgs.qt5.full
+              pkgs.qt6.full
+
               vulkan-headers
               vulkan-loader
+
               wayland
               wayland-protocols
+
+              xorg.libX11
+              xorg.libXcursor
+              xorg.libXi
+              xorg.libXrandr
             ];
             nativeBuildInputs = with pkgs; [
               pkg-config

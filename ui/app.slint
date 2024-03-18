@@ -12,8 +12,9 @@ export component AppWindow inherits Window {
     callback send-sm3(string);
     callback send-sm4e(string, string);
     callback send-sm4d(string, string);
-    icon: @image-url("../resources/icon/icon.png");
-    title: "密码硬件";
+    icon: UIMetrics.icon;
+    default-font-family: UIMetrics.font-family;
+    title: UIMetrics.title;
     min-width: UIMetrics.App.min-width;
     min-height: UIMetrics.App.min-height;
     TabWidget {
