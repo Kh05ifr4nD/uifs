@@ -15,5 +15,8 @@ strip = "symbols"
 rustc-wrapper = "sccache"
 # rustflags = ["-Ctarget-cpu=native"]
 
+[target.'cfg(target_os=windows)']
+rustflags = ["-Clink-arg=-fuse-ld=lld-link", "-Zthread=0"]
+
 [target.'cfg(target_os=linux)']
 rustflags = ["-Clink-arg=-fuse-ld=mold", "-Zthread=0"]

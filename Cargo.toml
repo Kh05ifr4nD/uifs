@@ -34,7 +34,7 @@ features = []
 
 [dependencies.tokio]
 version = "1.36.0"
-features = ["rt", "rt-multi-thread", "fs", "macros"]
+features = ["rt-multi-thread", "fs", "macros"]
 default-features = false
 
 [dependencies.tracing]
