@@ -72,15 +72,6 @@ async fn main() -> Rst<()> {
             SP.with(|rc| {
                 let sps = oc.get().unwrap();
                 let next_sp = &sps[sp_idx as usize];
-                {
-                    if let Some(cur_sp) = rc.borrow().as_ref() {
-                        if cur_sp.name().unwrap() == next_sp.port_name {
-                            info!(sp_idx = sp_idx, next_sp = ?next_sp, "Selected serial port has already been opened.");
-                            rtn = true;
-                            return;
-                        };
-                    };
-                }
 
                 match serialport::new(next_sp.port_name.as_str(), BAUD_RATE)
                     .timeout(TIMEOUT)
@@ -92,6 +83,7 @@ async fn main() -> Rst<()> {
                         rtn = true;
                     }
                     Err(e) => {
+                        rc.take();
                         warn!(sp_idx = sp_idx, next_sp = ?next_sp, "{}", mk_err(e, "Failed to open selected sp!"));
                     }
                 };
