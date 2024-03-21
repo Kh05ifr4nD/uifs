@@ -11,49 +11,49 @@ license = "MIT"
 repository = "https://gitlab.com/meandssh/suif"
 
 [dependencies.mimalloc]
-version = "0.1.39"
+version = "0.1"
 features = []
 
 [dependencies.serde]
-version = "1.0.196"
+version = "1.0"
 features = ["derive"]
 
 [dependencies.serialport]
-version = "4.3.0"
+version = "4"
 features = []
 default-features = false
 
 [dependencies.slint]
-version = "1.4.1"
-features = ["compat-1-2"]
+version = "1"
+features = ["compat-1-2", "software-renderer-systemfonts"]
 default-features = false
 
 [dependencies.snafu]
-version = "0.8.0"
+version = "0.8"
 features = []
 
 [dependencies.tokio]
-version = "1.36.0"
+version = "1.36"
 features = ["rt-multi-thread", "fs", "macros"]
 default-features = false
 
 [dependencies.tracing]
-version = "0.1.40"
+version = "0.1"
 features = []
 default-features = false
 
 [dependencies.tracing-appender]
-version = "0.2.3"
+version = "0.2"
 features = []
 default-features = false
 
 [dependencies.tracing-subscriber]
-version = "0.3.18"
+version = "0.3"
 features = ["ansi", "chrono", "parking_lot", "env-filter"]
 default-features = false
 
 [build-dependencies]
-slint-build = "1.5.0"
+slint-build = "1"
 
 [features]
 default = ["slint/backend-winit", "slint/renderer-femtovg"]

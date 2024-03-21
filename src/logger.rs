@@ -14,7 +14,8 @@ pub struct LogConf {
     pub stdout: bool,
 }
 
-const LOG_PREFIX: &str = concat!(env!("CARGO_PKG_NAME"), '-', env!("CARGO_PKG_VERSION"), '-');
+const LOG_PREFIX: &str =
+    concat!(env!("CARGO_PKG_NAME"), '-', env!("CARGO_PKG_VERSION"), '-');
 
 pub async fn suber_init(conf: &LogConf) -> Rst<(Opt<WorkerGuard>, Opt<WorkerGuard>)> {
     if let Err(e) = tokio::fs::create_dir_all(Path::new(&conf.dir)).await {
@@ -36,7 +37,8 @@ pub async fn suber_init(conf: &LogConf) -> Rst<(Opt<WorkerGuard>, Opt<WorkerGuar
 
     let mut layers = Vec::new();
     let _file_guard = if conf.file {
-        let (file_writer, _file_guard) = nb(tracing_appender::rolling::daily(dir, LOG_PREFIX));
+        let (file_writer, _file_guard) =
+            nb(tracing_appender::rolling::daily(dir, LOG_PREFIX));
         layers.push(
             fmt::Layer::new()
                 .with_ansi(false)

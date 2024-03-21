@@ -17,11 +17,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() -> Rst<()> {
-    let log_conf = LogConf {
-        dir: "./log",
-        file: true,
-        stdout: true,
-    };
+    let log_conf = LogConf { dir: "./log", file: true, stdout: true };
 
     let _writer_guard = suber_init(&log_conf).await?;
     trace!(log_conf = ?log_conf, "Tracing Initialization finished.");
@@ -87,11 +83,7 @@ async fn main() -> Rst<()> {
     trace!("Start running GUI");
 
     let t = Timer::default();
-    t.start(
-        slint::TimerMode::Repeated,
-        Duration::from_millis(500),
-        move || {},
-    );
+    t.start(slint::TimerMode::Repeated, Duration::from_millis(500), move || {});
 
     if let Err(e) = ui.show() {
         let e = f!("{}: {e:?}; Failed to show app_window!", type_of(&e));
