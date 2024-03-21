@@ -1,14 +1,15 @@
 [package]
-name = "suif"
+name = "uifs"
+version = "0.1.0"
+authors = ["呃呃 <meandSSH0219@gmail.com>"]
 edition = "2021"
 rust-version = "1.76.0"
-version = "0.1.0"
-build = "build.rs"
-authors = ["meandSSH0219 <meandSSH0219@gmail.com>"]
-description = "A simple user interface for FPGA"
+description = "A simple user interface for teaching-use FPGA via serial port, built with Slint"
 readme = "README.md"
+homepage = "https://github.com/meandssh/uifs"
+repository = "https://github.com/meandssh/uifs"
 license = "MIT"
-repository = "https://gitlab.com/meandssh/suif"
+build = "build.rs"
 
 [dependencies.mimalloc]
 version = "0.1"

@@ -1,13 +1,13 @@
 use std::path::Path;
-use suif::{type_of, we, Dbg, Deser, Opt, Rst, Ser};
 use tracing_appender::non_blocking as nb;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt::{self, time::ChronoLocal};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
+use uifs::{mk_err, we, Dbg, Deser, Opt, Rst, Ser};
 
-#[derive(Clone, Dbg, Ser, Deser)]
+#[derive(Clone, Dbg, PartialEq, Ser, Deser)]
 pub struct LogConf {
     pub dir: &'static str,
     pub file: bool,
@@ -17,22 +17,16 @@ pub struct LogConf {
 const LOG_PREFIX: &str =
     concat!(env!("CARGO_PKG_NAME"), '-', env!("CARGO_PKG_VERSION"), '-');
 
-pub async fn suber_init(conf: &LogConf) -> Rst<(Opt<WorkerGuard>, Opt<WorkerGuard>)> {
+pub async fn sub_init(conf: &LogConf) -> Rst<(Opt<WorkerGuard>, Opt<WorkerGuard>)> {
     if let Err(e) = tokio::fs::create_dir_all(Path::new(&conf.dir)).await {
-        we!(
-            "{}: {e:?}; Failed to initialize log directory! conf={:?}",
-            type_of(&e),
-            conf
-        );
+        we!("{} conf={conf:?}", mk_err(e, "Failed to initialize log directory!"));
     };
 
     let dir = match tokio::fs::canonicalize(&conf.dir).await {
         Ok(f) => f,
-        Err(e) => we!(
-            "{}: {e:?}; Failed to canonicalize log directory! conf={:?}",
-            type_of(&e),
-            conf
-        ),
+        Err(e) => {
+            we!("{} conf={conf:?}", mk_err(e, "Failed to canonicalize log directory!"))
+        }
     };
 
     let mut layers = Vec::new();
@@ -71,9 +65,10 @@ pub async fn suber_init(conf: &LogConf) -> Rst<(Opt<WorkerGuard>, Opt<WorkerGuar
     } else {
         None
     };
+
     tracing_subscriber::registry()
         .with(layers)
-        .with(EnvFilter::from_env("SUIF_LOG"))
+        .with(EnvFilter::from_default_env())
         .init();
     Ok((_file_guard, _stdout_guard))
 }

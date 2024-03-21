@@ -3049,22 +3049,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "suif"
-version = "0.1.0"
-dependencies = [
- "mimalloc",
- "serde",
- "serialport",
- "slint",
- "slint-build",
- "snafu",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "svgtypes"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3379,6 +3363,22 @@ dependencies = [
  "libc",
  "libudev-sys",
  "pkg-config",
+]
+
+[[package]]
+name = "uifs"
+version = "0.1.0"
+dependencies = [
+ "mimalloc",
+ "serde",
+ "serialport",
+ "slint",
+ "slint-build",
+ "snafu",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]

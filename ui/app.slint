@@ -1,28 +1,29 @@
 import { Button, VerticalBox, LineEdit, HorizontalBox, ComboBox, TabWidget, AboutSlint, TextEdit, StyleMetrics, GroupBox } from "std-widgets.slint";
 import { UIMetrics } from "metrics.slint";
 import { SplitLine } from "split_line.slint";
+import { AboutPage } from "about_page.slint";
 
 export component AppWindow inherits Window {
     in property <[string]> sps <=> sp-box.model;
     private property <bool> send-ready <=> send-button.checkable;
     private property <bool> sp-ready <=> open-button.checked;
-    private property <string> sp-name: sps[0];
+    private property <int> sp-idx <=> sp-box.current-index;
     private property <int> mode <=> cipher.current-index;
-    callback sp-open(string) -> bool;
+    callback sp-open(int) -> bool;
     callback send-sm3(string);
     callback send-sm4e(string, string);
     callback send-sm4d(string, string);
-    icon: UIMetrics.icon;
-    default-font-family: UIMetrics.font-family;
-    title: UIMetrics.title;
-    min-width: UIMetrics.App.min-width;
-    min-height: UIMetrics.App.min-height;
+    icon: UIMetrics.AppW.icon;
+    default-font-family: UIMetrics.AppW.f-family;
+    title: UIMetrics.AppW.title;
+    min-width: UIMetrics.AppW.min-w;
+    min-height: UIMetrics.AppW.min-h;
     TabWidget {
         Tab {
-            title: "主页";
+            title: UIMetrics.TabW.titles[0];
             HorizontalLayout {
-                Rectangle {
-                    background: UIMetrics.Sidebar.background;
+                sidebar := Rectangle {
+                    background: UIMetrics.SideB.bg;
                     VerticalLayout {
                         alignment: start;
                         padding-left: StyleMetrics.layout-padding;
@@ -32,7 +33,7 @@ export component AppWindow inherits Window {
                             VerticalLayout {
                                 spacing: StyleMetrics.layout-spacing;
                                 HorizontalLayout {
-                                    height: UIMetrics.line-height;
+                                    height: UIMetrics.h-1;
                                     spacing: StyleMetrics.layout-spacing;
                                     Text {
                                         vertical-alignment: center;
@@ -44,16 +45,15 @@ export component AppWindow inherits Window {
                                     // CBC ECB
 
                                     sp-box := ComboBox {
-                                        width: UIMetrics.box-width;
-                                        selected(sp-name) => {
+                                        width: UIMetrics.w-2;
+                                        selected => {
                                             root.sp-ready = false;
-                                            root.sp-name = sp-name;
                                         }
                                     }
                                 }
 
                                 HorizontalLayout {
-                                    height: UIMetrics.line-height;
+                                    height: UIMetrics.h-1;
                                     spacing: StyleMetrics.layout-spacing;
                                     Text {
                                         vertical-alignment: center;
@@ -65,9 +65,9 @@ export component AppWindow inherits Window {
                                     open-button := Button {
                                         checkable: true;
                                         text: root.sp-ready ? "已连接" : "未打开";
-                                        width: UIMetrics.box-width;
+                                        width: UIMetrics.w-2;
                                         clicked => {
-                                            root.sp-ready = sp_open(root.sp-name)
+                                            sp-ready = sp_open(root.sp-idx);
                                         }
                                     }
                                 }
@@ -80,7 +80,7 @@ export component AppWindow inherits Window {
                             padding: 0;
                             title: "算法";
                             HorizontalLayout {
-                                height: UIMetrics.line-height;
+                                height: UIMetrics.h-1;
                                 cipher := ComboBox {
                                     model: ["SM3 散列", "SM4 加密", "SM4 解密"];
                                 }
@@ -108,7 +108,7 @@ export component AppWindow inherits Window {
                                 }
 
                                 pc-line := LineEdit {
-                                    height: UIMetrics.line-height;
+                                    height: UIMetrics.h-1;
                                 }
                             }
 
@@ -123,15 +123,15 @@ export component AppWindow inherits Window {
 
                                 LineEdit {
                                     enabled: mode != 0;
-                                    height: UIMetrics.line-height;
+                                    height: UIMetrics.h-1;
                                 }
                             }
                         }
 
                         send-button := Button {
                             text: "发\n送";
-                            width: UIMetrics.main-button-width;
-                            height: 1 * StyleMetrics.layout-padding + 2 * UIMetrics.line-height;
+                            width: UIMetrics.w-1;
+                            height: 1 * StyleMetrics.layout-padding + 2 * UIMetrics.h-1;
                             clicked => {
                                 if mode == 0 {
                                     send-sm3(pc-line.text)
@@ -148,12 +148,8 @@ export component AppWindow inherits Window {
         }
 
         Tab {
-            title: "关于";
-            VerticalBox {
-                alignment: center;
-                width: UIMetrics.About.width;
-                AboutSlint { }
-            }
+            title: UIMetrics.TabW.titles[1];
+            AboutPage { }
         }
     }
 }

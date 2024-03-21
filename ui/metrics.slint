@@ -1,33 +1,49 @@
 import { StyleMetrics } from "std-widgets.slint";
 import "../resources/fonts/SourceHanSansSC/SourceHanSansSC-Regular.otf";
-struct App {
-    min-width:length,
-    min-height:length,
+
+struct AboutP {
+    a: LayoutAlignment,
+    w: length,
 }
 
-struct SideBar {
-    background:color,
+struct AppW {
+    f-family: string,
+    icon: image,
+    min-w: length,
+    min-h: length,
+    title: string,
 }
 
-struct About {
-    width:length,
+struct SideB {
+    bg: color,
 }
 
-struct SplitLine {
+struct SplitL {
     color: color,
-    height:length,
-    radius:length,
+    h: length,
+    r: length,
+}
+
+struct TabW {
+    titles: [string],
 }
 
 export global UIMetrics {
-    out property <About> About: { width:256px };
-    out property <App> App: { line-height:35px, min-width:640px, min-height:360px };
-    out property <image> icon: @image-url("../resources/icons/icon.png");
-    out property <string> font-family: "Source Han Sans SC";
-    out property <string> title: "SUIF";
-    out property <SideBar> Sidebar: { background:StyleMetrics.window-background.darker(0.2) };
-    out property <SplitLine> SplitLine: { color:StyleMetrics.textedit-background-disabled, height:3px, radius:2px };
-    out property <length> box-width: 175px;
-    out property <length> main-button-width: 80px;
-    out property <length> line-height: 35px;
+    out property <AboutP> AboutP: { a: LayoutAlignment.center, w: 256px };
+    out property <AppW> AppW: {
+        f-family:"Source Han Sans SC",
+        icon: @image-url("../resources/icons/icon.png"),
+        min-w: 640px,
+        min-h: 360px,
+        title: "UIFS",
+    };
+    out property <SideB> SideB: { bg: StyleMetrics.window-background.darker(0.2) };
+    out property <SplitL> SplitL: { color: StyleMetrics.textedit-background-disabled, h: 3px, r: 2px };
+    out property <TabW> TabW: { titles: [
+        "主页",
+        "关于",
+    ] };
+    out property <length> w-2: 160px;
+    out property <length> w-1: 80px;
+    out property <length> h-1: 40px;
 }

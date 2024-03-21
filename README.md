@@ -1,3 +1,3 @@
-# SUIF
+# UIFS
 
-A simple user interface for FPGA, used in XDU teaching, written in Rust and [Slint](https://slint.rs) for GUI.
+A simple user interface for teaching-use FPGA via serial port, built with Slint.
