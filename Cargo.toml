@@ -11,6 +11,9 @@ repository = "https://github.com/meandssh/uifs"
 license = "MIT"
 build = "build.rs"
 
+[dependencies.dotenvy]
+version = "0.15"
+
 [dependencies.mimalloc]
 version = "0.1"
 features = []

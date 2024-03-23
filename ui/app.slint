@@ -9,6 +9,7 @@ export component AppWindow inherits Window {
     private property <bool> sp-ready <=> open-button.checked;
     private property <int> sp-idx <=> sp-box.current-index;
     private property <int> mode <=> cipher.current-index;
+    private property <int> key-len: 0;
     callback sp-open(int) -> bool;
     callback send-sm3(string);
     callback send-sm4e(string, string);
@@ -115,15 +116,16 @@ export component AppWindow inherits Window {
                             HorizontalLayout {
                                 spacing: StyleMetrics.layout-spacing;
                                 key-line := Text {
-                                    vertical-alignment: center;
-                                    horizontal-alignment: left;
                                     font-size: 1.25rem;
+                                    horizontal-alignment: left;
                                     text: "密钥";
+                                    vertical-alignment: center;
                                 }
 
                                 LineEdit {
                                     enabled: mode != 0;
                                     height: UIMetrics.h-1;
+                                    placeholder-text: "（密钥长度 128 位，请输入 HEX 值）";
                                 }
                             }
                         }

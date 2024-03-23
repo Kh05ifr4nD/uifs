@@ -3,16 +3,13 @@ slint::include_modules!();
 mod logger;
 
 use core::{cell::RefCell, time::Duration};
-use logger::{sub_init, LogConf};
+use logger::Config;
 use mimalloc::MiMalloc;
 use serialport::{available_ports, SerialPort, SerialPortInfo, SerialPortType};
 use slint::{format as slint_f, ModelRc, Timer};
 use std::cell::OnceCell;
 use tracing::{debug, error, info, trace, warn};
-use uifs::{mk_err, we, Rst};
-
-const BAUD_RATE: u32 = 115_200;
-const TIMEOUT: Duration = Duration::from_millis(300);
+use uifs::{mk_err, we, Rst, BAUD_RATE, TIMEOUT};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -24,9 +21,10 @@ thread_local! {
 
 #[tokio::main]
 async fn main() -> Rst<()> {
-    let log_conf = LogConf { dir: "./log", file: true, stdout: true };
+    let a = String::from("./log");
+    let log_conf = Config::new(a.as_str(), true, true);
 
-    let _writer_guard = sub_init(&log_conf).await?;
+    log_conf.init().await?;
     trace!(log_conf = ?log_conf, "Tracing Initialization finished.");
 
     #[cfg(debug_assertions)]
