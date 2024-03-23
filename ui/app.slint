@@ -9,11 +9,12 @@ export component AppWindow inherits Window {
     private property <bool> sp-ready <=> open-button.checked;
     private property <int> sp-idx <=> sp-box.current-index;
     private property <int> mode <=> cipher.current-index;
+    private property <string> result-text;
     private property <int> key-len: 0;
     callback sp-open(int) -> bool;
-    callback send-sm3(string);
-    callback send-sm4e(string, string);
-    callback send-sm4d(string, string);
+    callback send-sm3(string) -> string;
+    callback send-sm4e(string, string) -> string;
+    callback send-sm4d(string, string) -> string;
     icon: UIMetrics.AppW.icon;
     default-font-family: UIMetrics.AppW.f-family;
     title: UIMetrics.AppW.title;
@@ -131,16 +132,17 @@ export component AppWindow inherits Window {
                         }
 
                         send-button := Button {
+                            enabled: root.sp-ready;
                             text: "发\n送";
                             width: UIMetrics.w-1;
                             height: 1 * StyleMetrics.layout-padding + 2 * UIMetrics.h-1;
                             clicked => {
-                                if mode == 0 {
-                                    send-sm3(pc-line.text)
-                                } else if mode == 1 {
-                                    send-sm4e(pc-line.text, key-line.text)
-                                } else if mode == 2 {
-                                    send-sm4d(pc-line.text, key-line.text)
+                                if (mode == 0) {
+                                    root.result-text = send-sm3(pc-line.text) + "\n";
+                                } else if (mode == 1) {
+                                    root.result-text += send-sm4e(pc-line.text, key-line.text) + "\n";
+                                } else if (mode == 2) {
+                                    root.result-text += send-sm4d(pc-line.text, key-line.text) + "\n";
                                 }
                             }
                         }

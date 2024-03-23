@@ -11,6 +11,12 @@ repository = "https://github.com/meandssh/uifs"
 license = "MIT"
 build = "build.rs"
 
+[dependencies.bytes]
+version = "1.6"
+
+[dependencies.const-hex]
+version = "1.11"
+
 [dependencies.dotenvy]
 version = "0.15"
 

@@ -1,6 +1,8 @@
-chain_width = 60
-max_width = 80
-merge_derives = false
-struct_lit_width = 50
+# chain_width = 60
+edition = "2021"
+max_width = 100
+# merge_derives = false
+# struct_lit_width = 50
+tab_spaces = 2
 use_field_init_shorthand = true
 use_small_heuristics = "Max"
