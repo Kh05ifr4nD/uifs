@@ -1,0 +1,159 @@
+import { Button, VerticalBox, LineEdit, HorizontalBox, ComboBox, TabWidget, AboutSlint, TextEdit, StyleMetrics, GroupBox } from "std-widgets.slint";
+import { UIMetrics } from "metrics.slint";
+import { SplitLine } from "split_line.slint";
+import { AboutPage } from "about_page.slint";
+
+export component AppWindow inherits Window {
+    in property <[string]> sps <=> sp-box.model;
+    private property <bool> send-ready <=> send-button.checkable;
+    private property <bool> sp-ready <=> open-button.checked;
+    private property <int> sp-idx <=> sp-box.current-index;
+    private property <int> mode <=> cipher.current-index;
+    private property <string> result-text <=> text.text;
+    private property <int> key-len: 0;
+    callback sp-open(int) -> bool;
+    callback send-sm3(string) -> string;
+    callback send-sm4e(string, string) -> string;
+    callback send-sm4d(string, string) -> string;
+    icon: UIMetrics.AppW.icon;
+    default-font-family: UIMetrics.AppW.f-family;
+    title: UIMetrics.AppW.title;
+    min-width: UIMetrics.AppW.min-w;
+    min-height: UIMetrics.AppW.min-h;
+    TabWidget {
+        Tab {
+            title: UIMetrics.TabW.titles[0];
+            HorizontalLayout {
+                sidebar := Rectangle {
+                    background: UIMetrics.SideB.bg;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: StyleMetrics.layout-padding;
+                        padding-right: StyleMetrics.layout-padding;
+                        GroupBox {
+                            title: "串口与设备";
+                            VerticalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                HorizontalLayout {
+                                    height: UIMetrics.h-1;
+                                    spacing: StyleMetrics.layout-spacing;
+                                    Text {
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                        font-size: 1.25rem;
+                                        text: "名称";
+                                    }
+
+                                    // CBC ECB
+
+                                    sp-box := ComboBox {
+                                        width: UIMetrics.w-2;
+                                        selected => {
+                                            root.sp-ready = false;
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    height: UIMetrics.h-1;
+                                    spacing: StyleMetrics.layout-spacing;
+                                    Text {
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                        font-size: 1.25rem;
+                                        text: "状态";
+                                    }
+
+                                    open-button := Button {
+                                        checkable: true;
+                                        text: root.sp-ready ? "已连接" : "未打开";
+                                        width: UIMetrics.w-2;
+                                        clicked => {
+                                            sp-ready = sp_open(root.sp-idx);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        SplitLine { }
+
+                        GroupBox {
+                            padding: 0;
+                            title: "算法";
+                            HorizontalLayout {
+                                height: UIMetrics.h-1;
+                                cipher := ComboBox {
+                                    model: ["SM3 散列", "SM4 加密", "SM4 解密"];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                VerticalBox {
+                    text := TextEdit {
+                        read-only: true;
+                    }
+
+                    HorizontalBox {
+                        padding: 0;
+                        VerticalBox {
+                            padding: 0;
+                            HorizontalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                Text {
+                                    vertical-alignment: center;
+                                    horizontal-alignment: left;
+                                    font-size: 1.25rem;
+                                    text: root.mode == 2 ? "密文" : "消息";
+                                }
+
+                                pc-line := LineEdit {
+                                    height: UIMetrics.h-1;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                key-line := Text {
+                                    font-size: 1.25rem;
+                                    horizontal-alignment: left;
+                                    text: "密钥";
+                                    vertical-alignment: center;
+                                }
+
+                                LineEdit {
+                                    enabled: mode != 0;
+                                    height: UIMetrics.h-1;
+                                    placeholder-text: "（密钥长度 128 位，请输入 HEX 值）";
+                                }
+                            }
+                        }
+
+                        send-button := Button {
+                            enabled: root.sp-ready;
+                            text: "发\n送";
+                            width: UIMetrics.w-1;
+                            height: 1 * StyleMetrics.layout-padding + 2 * UIMetrics.h-1;
+                            clicked => {
+                                if (mode == 0) {
+                                    root.result-text += send-sm3(pc-line.text) + "\n";
+                                } else if (mode == 1) {
+                                    root.result-text += send-sm4e(pc-line.text, key-line.text) + "\n";
+                                } else if (mode == 2) {
+                                    root.result-text += send-sm4d(pc-line.text, key-line.text) + "\n";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Tab {
+            title: UIMetrics.TabW.titles[1];
+            AboutPage { }
+        }
+    }
+}

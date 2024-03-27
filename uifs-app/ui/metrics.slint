@@ -1,0 +1,49 @@
+import { StyleMetrics } from "std-widgets.slint";
+// import "../resources/fonts/SourceHanSansSC/SourceHanSansSC-Regular.otf";
+
+struct AboutP {
+    a: LayoutAlignment,
+    w: length,
+}
+
+struct AppW {
+    f-family: string,
+    icon: image,
+    min-w: length,
+    min-h: length,
+    title: string,
+}
+
+struct SideB {
+    bg: color,
+}
+
+struct SplitL {
+    color: color,
+    h: length,
+    r: length,
+}
+
+struct TabW {
+    titles: [string],
+}
+
+export global UIMetrics {
+    out property <AboutP> AboutP: { a: LayoutAlignment.center, w: 256px };
+    out property <AppW> AppW: {
+        f-family:"Microsoft YaHei UI",
+        icon: @image-url("../resources/icons/icon.png"),
+        min-w: 640px,
+        min-h: 360px,
+        title: "UIFS",
+    };
+    out property <SideB> SideB: { bg: StyleMetrics.window-background.darker(0.2) };
+    out property <SplitL> SplitL: { color: StyleMetrics.textedit-background-disabled, h: 3px, r: 2px };
+    out property <TabW> TabW: { titles: [
+        "主页",
+        "关于",
+    ] };
+    out property <length> w-2: 200px;
+    out property <length> w-1: 80px;
+    out property <length> h-1: 35px;
+}

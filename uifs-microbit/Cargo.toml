@@ -1,0 +1,28 @@
+[package]
+name = "uifs-microbit"
+version = "0.1.0"
+authors = { workspace = true }
+edition = "2021"
+
+[dependencies.bytes]
+workspace = true
+
+[dependencies.microbit-v2]
+version = "0"
+
+[dependencies.embedded-io]
+version = "0"
+
+[dependencies]
+cortex-m-rt = "0.7"
+cortex-m-rtic = "1.1.4"
+embedded-alloc = "0.5"
+heapless = "0"
+nb = "1"
+
+[dependencies.rtt-target]
+version = "0"
+
+[dependencies.cortex-m]
+version = "0.7"
+features = ["critical-section-single-core"]

@@ -1,5 +1,4 @@
 **/*.rs.bk
 /.direnv/
 /.idea/
-/log/
 /target/

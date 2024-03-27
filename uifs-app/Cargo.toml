@@ -20,6 +20,11 @@ version = "1.11"
 [dependencies.dotenvy]
 version = "0.15"
 
+[dependencies.miette]
+version = "7"
+features = ["fancy"]
+
+
 [dependencies.mimalloc]
 version = "0.1"
 features = []
