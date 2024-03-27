@@ -1,22 +1,11 @@
-[profile.dev]
-debug = 1
-lto = "off"
-
-[profile.release]
-codegen-units = 1
-debug = false
-incremental = true
-lto = "fat"
-opt-level = "s"
-panic = "abort"
-strip = "symbols"
-
 [build]
 rustc-wrapper = "sccache"
-# rustflags = ["-Ctarget-cpu=native"]
 
 [target.'cfg(target_os=windows)']
 rustflags = ["-Clink-arg=-fuse-ld=lld-link", "-Zthread=0"]
 
 [target.'cfg(target_os=linux)']
 rustflags = ["-Clink-arg=-fuse-ld=mold", "-Zthread=0"]
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = ["-C", "link-arg=-Tlink.x"]

@@ -10,7 +10,7 @@ use serialport::{available_ports, SerialPort, SerialPortInfo, SerialPortType};
 use slint::ModelRc;
 use std::{cell::OnceCell, env, thread::sleep};
 use tracing::{debug, error, info, trace, warn};
-use uifs::{
+use uifs_app::{
   mk_err_str, slint_f, we, Rst, FRM_HEADER_LEN, FRM_PRESERVE_FLAG, FRM_START_FLAG, RX_SM3_RTN_LEN,
   SP_BAUD_RATE, SP_TIMEOUT, TX_MSG_MAX_LEN, TX_SM3_FLAG,
 };
@@ -116,8 +116,6 @@ async fn main() -> Rst<()> {
     CUR_SP_RC.with(|rc| {
       let mut cur_sp = rc.borrow_mut();
       let cur_sp = cur_sp.as_mut().unwrap();
-      cur_sp.write_all(&buf[..]);
-      cur_sp.flush();
 
       if let Err(e) = cur_sp.write_all(&buf[..]) {
         error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));

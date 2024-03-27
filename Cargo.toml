@@ -1,0 +1,18 @@
+[workspace]
+default-members = ["uifs-app", "uifs-microbit"]
+members = ["uifs-app", "uifs-microbit"]
+resolver = "2"
+
+[workspace.package]
+name = "uifs"
+version = "0.1.0"
+authors = ["呃呃 <meandSSH0219@gmail.com>"]
+edition = "2021"
+description = "A simple user interface for teaching-use FPGA via serial port, built with Slint"
+readme = "README.md"
+homepage = "https://github.com/meandssh/uifs"
+repository = "https://github.com/meandssh/uifs"
+license = "MIT"
+
+[workspace.dependencies]
+bytes = { version = "1", default-features = false }

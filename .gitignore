@@ -1,4 +1,5 @@
 **/*.rs.bk
 /.direnv/
+/.vscode/
 /.idea/
 /target/

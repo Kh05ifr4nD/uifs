@@ -1,24 +1,21 @@
 [package]
-name = "uifs"
+name = "uifs-app"
 version = "0.1.0"
-authors = ["呃呃 <meandSSH0219@gmail.com>"]
-edition = "2021"
+authors = { workspace = true }
+edition = { workspace = true }
 rust-version = "1.76.0"
-description = "A simple user interface for teaching-use FPGA via serial port, built with Slint"
-readme = "README.md"
-homepage = "https://github.com/meandssh/uifs"
-repository = "https://github.com/meandssh/uifs"
-license = "MIT"
+description = "GUI part for uifs."
+readme = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 build = "build.rs"
 
 [dependencies.bytes]
-version = "1.6"
+workspace = true
 
 [dependencies.const-hex]
 version = "1.11"
-
-[dependencies.dotenvy]
-version = "0.15"
 
 [dependencies.miette]
 version = "7"

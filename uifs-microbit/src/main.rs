@@ -46,8 +46,12 @@ fn main() -> ! {
     .unwrap();
 
   loop {
-    let byte = nb::block!(rx.read()).unwrap();
-    rprintln!("{:?}", byte);
+    if let Ok(_) = rx.read() {
+      tx.bwrite_all(&mut buf);
+      tx.bflush();
+      panic!()
+    }
+    
   }
 }
 
