@@ -1,5 +1,5 @@
 [workspace]
-default-members = ["uifs-app", "uifs-microbit"]
+default-members = ["uifs-app"]
 members = ["uifs-app", "uifs-microbit"]
 resolver = "2"
 

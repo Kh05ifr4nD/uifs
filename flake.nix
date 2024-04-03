@@ -42,7 +42,6 @@
             shellHook = ''
               export RUST_SRC_PATH=${pkgs.rustPlatform.rustLibSrc}
               # For rust-analyzer 'hover' tooltips to work.
-              nu
               $env.RUST_SRC_PATH = '${pkgs.rustPlatform.rustLibSrc}'
             '';
             buildInputs = with pkgs; [
@@ -52,7 +51,7 @@
               just
               mold
               rust-bin.stable.latest.default
-              sccache
+              sscache
 
               fontconfig
 

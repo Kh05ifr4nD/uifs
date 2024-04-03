@@ -2,4 +2,5 @@
 /.direnv/
 /.vscode/
 /.idea/
+/log/
 /target/
