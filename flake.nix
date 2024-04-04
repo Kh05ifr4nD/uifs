@@ -41,8 +41,6 @@
             ];
             shellHook = ''
               export RUST_SRC_PATH=${pkgs.rustPlatform.rustLibSrc}
-              # For rust-analyzer 'hover' tooltips to work.
-              $env.RUST_SRC_PATH = '${pkgs.rustPlatform.rustLibSrc}'
             '';
             buildInputs = with pkgs; [
               cargo-cache
@@ -50,8 +48,8 @@
               cargo-unused-features
               just
               mold
-              rust-bin.stable.latest.default
-              sscache
+              probe-rs
+
 
               fontconfig
 
@@ -73,9 +71,13 @@
               xorg.libXi
               xorg.libXrandr
             ];
+
             nativeBuildInputs = with pkgs; [
               pkg-config
+              (rust-bin.fromRustupToolchainFile
+                ./rust-toolchain.toml)
             ];
+
             LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
             RUST_BACKTRACE = 1;
           };

@@ -1,6 +1,6 @@
 [build]
-# rustc-wrapper = "sccache"
-# rustflags = ["-Z", "threads=8"]
+rustc-wrapper = "sccache"
+# rustflags = ["-Z", "threads=0"]
 
 [target.'cfg(target_os=windows)']
 rustflags = ["-Clink-arg=-fuse-ld=lld-link"]
