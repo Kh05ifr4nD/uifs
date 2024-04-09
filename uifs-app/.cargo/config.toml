@@ -7,6 +7,6 @@ codegen-units = 1
 debug = false
 incremental = true
 lto = "fat"
-opt-level = "s"
+opt-level = "z"
 panic = "abort"
 strip = "symbols"

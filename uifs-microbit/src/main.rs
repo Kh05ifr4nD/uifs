@@ -46,12 +46,9 @@ fn main() -> ! {
     .unwrap();
 
   loop {
-    if let Ok(_) = rx.read() {
-      tx.bwrite_all(&mut buf);
-      tx.bflush();
-      panic!()
-    }
-    
+    tx.bwrite_all(b"114514");
+    tx.flush();
+    panic!();
   }
 }
 

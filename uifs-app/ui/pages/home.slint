@@ -1,0 +1,192 @@
+import { Button, ComboBox, HorizontalBox, LineEdit, StyleMetrics, TextEdit, VerticalBox } from "std-widgets.slint";
+import { SideSection } from "../widgets/side_section.slint";
+import { SideRow } from "../widgets/side_row.slint";
+import { SplitLine } from "../widgets/split_line.slint";
+
+export global Options {
+    private property <bool> ready;
+    in property <[string]> sps;
+    out property <string> dp-text;
+    callback update-dp-text(string);
+    callback key-send(string) -> bool;
+    callback send-sm3(string) -> string;
+    callback send-sm4e-cbc(string, string) -> string;
+    callback send-sm4e-ecb(string) -> string;
+    callback send-sm4d-cbc(string, string) -> string;
+    callback send-sm4d-ecb(string) -> string;
+    callback sp-open(int) -> bool;
+
+    update-dp-text(newline) => {
+        dp-text += newline + "\n";
+    }
+}
+
+export component HomePage inherits HorizontalLayout {
+    Rectangle {
+        background: StyleMetrics.window-background.darker(0.2);
+
+        VerticalLayout {
+            alignment: start;
+            padding-left: StyleMetrics.layout-padding;
+            padding-right: StyleMetrics.layout-padding;
+            
+            SideSection {
+                title: "设备";
+
+                SideRow {
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: "串口";
+                    }
+
+                    sp-box := ComboBox {
+                        model: Options.sps;
+                        selected => {
+                            open-button.checked = false;
+                        }
+                    }
+                }
+
+                SideRow {
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: "状态";
+                    }
+
+                    open-button := Button {
+                        enabled: 0 != Options.sps.length;
+                        text: self.checked ? "已连接" : "未打开";
+                        width: 200px;
+                        clicked => {
+                            self.checked = Options.sp-open(sp-box.current-index);
+                        }
+                    }
+                }
+            }
+
+            SplitLine {}
+
+            SideSection {
+                title: "算法";
+
+                SideRow {
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: "名称";
+                    }
+
+                    cipher-box := ComboBox {
+                        model: ["SM3 散列", "SM4 加密", "SM4 解密"];
+                    }
+                }
+
+                SideRow {
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: "模式";
+                    }
+
+                    mode-box := ComboBox {
+                        enabled: cipher-box.current-index != 0;
+                        model: ["CBC", "ECB"];
+                    }
+                }
+            }
+
+            SplitLine {}
+        
+            SideSection {
+                title: "参数";
+
+                SideRow {
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: "密钥";
+                    }
+                    key-line := LineEdit {
+                        enabled: cipher-box.current-index != 0;
+                        placeholder-text: "(HEX)";
+                    }
+                }
+
+                SideRow {
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: "IV";
+                    }
+                    iv-line := LineEdit {
+                        enabled: 0 == mode-box.current-index; 
+                        placeholder-text: "(HEX)";
+                    }
+                }
+
+                key-button := Button {
+                    text: self.primary ? "成功" : "发送密钥";
+                    clicked => {
+                        self.primary = Options.key-send(key-line.text);
+                    }
+                }
+            }
+        }
+    }
+
+    VerticalBox {
+        dp-edit := TextEdit {
+            read-only: true;
+            text: Options.dp-text;
+        }
+
+        HorizontalBox {
+            padding: 0;
+            VerticalBox {
+                padding: 0;
+                HorizontalLayout {
+                    spacing: StyleMetrics.layout-spacing;
+                    Text {
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        font-size: 1.25rem;
+                        text: cipher-box.current-index == 2 ? "密文" : "消息";
+                    }
+
+                    pc-line := LineEdit {
+                        height: 40px;
+                    }
+                }
+            }
+
+            send-button := Button {
+                enabled: open-button.checked && (0 == cipher-box.current-index || key-button.primary);
+                primary: true;
+                text: "发送";
+                width: 160px;
+                height: 40px;
+                clicked => {
+                    // if (cipher-box.current-index == 0) {
+                    //     Options.send-sm3(pc-line.text);
+                    // } else if (cipher-box.current-index == 1 && mode-box.current-index == 0) {
+                    //     Options.send-sm4e-cbc(pc-line.text, iv-line.text);
+                    // } else if (cipher-box.current-index == 1 && mode-box.current-index == 1) {
+                    //     Options.send-sm4e-ecb(pc-line.text);
+                    // } else if (cipher-box.current-index == 2 && mode-box.current-index == 0) {
+                    //     Options.send-sm4d-cbc(pc-line.text, iv-line.text);
+                    // } else if (cipher-box.current-index == 2 && mode-box.current-index == 1) {
+                    //     Options.send-sm4d-ecb(pc-line.text);
+                    // }
+                }
+            }
+        }
+    }
+}
