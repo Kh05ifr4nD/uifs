@@ -35,8 +35,7 @@ fn main() -> ! {
   buf.put_u8(1);
   buf.put_u8(0);
   buf.put_slice(b"89510356C2D3BB34B08E63649AEFB6DEEF36362970E4C9FA685B72DAFC330A1A");
-  buf.put_u8(0);
-  buf.put_u8(0);
+  buf.put_u16(0);
 
   let board = microbit::Board::take().unwrap();
 
@@ -48,10 +47,9 @@ fn main() -> ! {
     .unwrap();
 
   loop {
-    tx.bwrite_all(&buf);
-    rprintln!("{:?}",buf);
+    tx.bwrite_all(&buf).unwrap();
+    
     tx.flush();
-    panic!();
   }
 }
 

@@ -10,8 +10,9 @@ use uifs_app::{
 
 pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppWindow>) {
   let mut buf = BytesMut::with_capacity(65536);
+  debug!("Start to listen.");
   loop {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::time::sleep(Duration::from_millis(1)).await;
     match sp.read(&mut buf) {
       Ok(0) => {}
       Ok(num) => {
