@@ -1,10 +1,7 @@
 use bytes::{BufMut, Bytes, BytesMut};
-const FRM_PRESERVE_FLAG: u8 = 0;
-const FRM_START_FLAG: u8 = 0xC0;
-const SM3_PAD_FLAG: u8 = 0x80;
-const FRM_HEADER_LEN: usize = 1 + 2 + 1 + 1;
-const FRM_TAIL_LEN: usize = 2;
-const FRM_PAR_FLAG: usize = 0;
+use uifs_app::*;
+#[derive(num_enum::TryFromPrimitive)]
+#[repr(u8)]
 
 pub enum OpFlag {
   Key = 1,
@@ -19,7 +16,7 @@ pub enum Mode {
 }
 
 pub fn key(k: &[u8; 16]) -> Bytes {
-  const FRM_LEN: usize = FRM_HEADER_LEN + 16 + FRM_TAIL_LEN;
+  const FRM_LEN: usize = FRM_HEAD_LEN + 16 + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(FRM_LEN);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(FRM_LEN as u16);
@@ -34,7 +31,7 @@ pub fn sm3(m: &[u8]) -> Bytes {
   const BLOCK_BYTES_LEN: usize = 64;
   let pad_len = (m.len() + 1 + 8 + BLOCK_BYTES_LEN - 1) & !(BLOCK_BYTES_LEN - 1);
 
-  let frm_len = FRM_HEADER_LEN + pad_len + FRM_TAIL_LEN;
+  let frm_len = FRM_HEAD_LEN + pad_len + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(frm_len as u16);
@@ -54,7 +51,7 @@ pub fn sm4_enc_cbc(pt: &[u8], iv: &[u8; 16]) -> Bytes {
   const BLOCK_BYTES_LEN: usize = 16;
   let pad_len = (pt.len() + BLOCK_BYTES_LEN - 1) & !(BLOCK_BYTES_LEN - 1);
 
-  let frm_len = FRM_HEADER_LEN + pad_len + 1 + 16 + FRM_TAIL_LEN;
+  let frm_len = FRM_HEAD_LEN + pad_len + 1 + 16 + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(frm_len as u16);
@@ -73,7 +70,7 @@ pub fn sm4_enc_cbc(pt: &[u8], iv: &[u8; 16]) -> Bytes {
 pub fn sm4_enc_ecb(ct: &[u8]) -> Bytes {
   const BLOCK_BYTES_LEN: usize = 16;
   let pad_len = (ct.len() + BLOCK_BYTES_LEN - 1) & !(BLOCK_BYTES_LEN - 1);
-  let frm_len = FRM_HEADER_LEN + pad_len + 1 + FRM_TAIL_LEN;
+  let frm_len = FRM_HEAD_LEN + pad_len + 1 + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(frm_len as u16);
@@ -88,7 +85,7 @@ pub fn sm4_enc_ecb(ct: &[u8]) -> Bytes {
 }
 
 pub fn sm4_dec_cbc(ct: &[u8], iv: &[u8; 16]) -> Bytes {
-  let frm_len = FRM_HEADER_LEN + ct.len() + 1 + 16 + FRM_TAIL_LEN;
+  let frm_len = FRM_HEAD_LEN + ct.len() + 1 + 16 + FRM_TAIL_LEN;
 
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
@@ -106,7 +103,7 @@ pub fn sm4_dec_cbc(ct: &[u8], iv: &[u8; 16]) -> Bytes {
 }
 
 pub fn sm4_dec_ecb(ct: &[u8]) -> Bytes {
-  let frm_len = FRM_HEADER_LEN + ct.len() + 1 + FRM_TAIL_LEN;
+  let frm_len = FRM_HEAD_LEN + ct.len() + 1 + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(frm_len as u16);

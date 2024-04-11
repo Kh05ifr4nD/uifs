@@ -3963,6 +3963,7 @@ dependencies = [
  "const-hex",
  "miette",
  "mimalloc",
+ "num_enum",
  "serde",
  "serialport",
  "slint",

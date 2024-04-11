@@ -26,6 +26,9 @@ features = ["fancy"]
 version = "0.1"
 features = []
 
+[dependencies.num_enum]
+version = "0"
+
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]

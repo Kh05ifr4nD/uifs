@@ -4,10 +4,11 @@ import { SideRow } from "../widgets/side_row.slint";
 import { SplitLine } from "../widgets/split_line.slint";
 
 export global Options {
+    in property <bool> key-ready: false;
     private property <bool> ready;
     in property <[string]> sps;
     out property <string> dp-text;
-    callback update-dp-text(string);
+    callback append-dp-text(string);
     callback key-send(string) -> bool;
     callback send-sm3(string) -> string;
     callback send-sm4e-cbc(string, string) -> string;
@@ -16,7 +17,7 @@ export global Options {
     callback send-sm4d-ecb(string) -> string;
     callback sp-open(int) -> bool;
 
-    update-dp-text(newline) => {
+    append-dp-text(newline) => {
         dp-text += newline + "\n";
     }
 }
@@ -133,6 +134,7 @@ export component HomePage inherits HorizontalLayout {
                 }
 
                 key-button := Button {
+                    primary: Options.key-ready;
                     text: self.primary ? "成功" : "发送密钥";
                     clicked => {
                         self.primary = Options.key-send(key-line.text);

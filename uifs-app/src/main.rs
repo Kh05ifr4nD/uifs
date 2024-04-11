@@ -4,16 +4,12 @@ mod logger;
 mod protocol;
 mod receiver;
 
-use bytes::{Buf, BytesMut};
-use tokio::select;
-
-use core::{borrow::BorrowMut, cell::Cell};
 use serialport::{SerialPort, SerialPortInfo, SerialPortType};
 use slint::{ModelRc, Weak, Window};
-use std::{env, thread::sleep};
+use std::env;
 use tracing::{debug, error, info, trace, warn};
 use uifs_app::{
-  mk_err_str, slint_f, we, Opt, Rst, FRM_HEADER_LEN, FRM_PRESERVE_FLAG, FRM_START_FLAG,
+  mk_err_str, slint_f, we, Opt, Rst, FRM_HEAD_LEN, FRM_PRESERVE_FLAG, FRM_START_FLAG,
   RX_SM3_RTN_LEN, SP_BAUD_RATE, SP_TIMEOUT, TX_MSG_MAX_LEN,
 };
 
