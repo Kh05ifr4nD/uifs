@@ -470,30 +470,4 @@ async fn main() -> Rst<()> {
   Ok(())
 }
 
-mod test {
-  use core::time::Duration;
 
-  use bytes::BytesMut;
-
-  #[tokio::test]
-  async fn name() {
-    let mut buf = BytesMut::with_capacity(65536);
-    loop {
-      tokio::time::sleep(Duration::from_secs(1)).await;
-      let mut sp = serialport::new("COM3", 115_200).open().unwrap();
-      match sp.read(&mut buf) {
-        Ok(0) => {
-          eprintln!("0");
-          panic!();
-        }
-        Ok(num) => {
-          eprint!("{num}");
-          panic!();
-        }
-        Err(e) => {
-          panic!("{e}");
-        }
-      }
-    }
-  }
-}

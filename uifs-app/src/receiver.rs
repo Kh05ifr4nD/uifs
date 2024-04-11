@@ -9,16 +9,18 @@ use uifs_app::{
 };
 
 pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppWindow>) {
-  let mut buf = BytesMut::with_capacity(65536);
+  let mut buf = BytesMut::from([0u8; 65536].as_slice());
   debug!("Start to listen.");
   loop {
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    tokio::time::sleep(Duration::from_millis(10)).await;
+    if 0 == sp.bytes_to_read().unwrap() {
+      continue;
+    }
     match sp.read(&mut buf) {
-      Ok(0) => {}
       Ok(num) => {
         debug!(num = num, "num");
+        debug!(buf = ?buf[..num], "buf");
         if num < FRM_HEAD_LEN + FRM_TAIL_LEN || num > FRM_MAX_LEN {
-          buf.clear();
           continue;
         }
         if FRM_START_FLAG != buf.get_u8() {
@@ -33,14 +35,14 @@ pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppW
           buf.clear();
           continue;
         }
-
+        debug!(buf=?buf[..num],"");
         match tp.try_into().unwrap() {
           OpFlag::Key => {
             if 0 == buf.get_u8() && 1 == buf.get_u8() {
               let weak_app = weak_app.clone();
               invoke_from_event_loop(move || {
                 weak_app.unwrap().global::<Options>().set_key_ready(true);
-              });
+              }).unwrap();
             }
           }
           OpFlag::Sm3 => {
@@ -49,45 +51,44 @@ pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppW
               buf.clear();
               continue;
             }
-            let mut hash = Vec::with_capacity(SM3_HASH_LEN);
-            hash.clone_from_slice(&buf[FRM_HEAD_LEN..FRM_HEAD_LEN + SM3_HASH_LEN]);
+
+            let mut hash = vec![0u8; SM3_HASH_LEN];
+            hash.clone_from_slice(&buf[..SM3_HASH_LEN]);
             let weak_app = weak_app.clone();
             invoke_from_event_loop(move || {
               weak_app
                 .unwrap()
                 .global::<Options>()
                 .invoke_append_dp_text(const_hex::encode(hash).into());
-            });
+            }).unwrap();
           }
           OpFlag::Sm4Enc => {
             let weak_app = weak_app.clone();
-            let mut ct = Vec::with_capacity(len - FRM_HEAD_LEN - FRM_TAIL_LEN);
-            ct.clone_from_slice(&buf[FRM_HEAD_LEN..len - FRM_TAIL_LEN]);
+            let mut ct = vec![0; len - FRM_HEAD_LEN - FRM_TAIL_LEN];
+            ct.clone_from_slice(&buf[..len - FRM_HEAD_LEN - FRM_TAIL_LEN]);
             invoke_from_event_loop(move || {
               weak_app
                 .unwrap()
                 .global::<Options>()
                 .invoke_append_dp_text(const_hex::encode(ct).into());
-            });
+            }).unwrap();
           }
           OpFlag::Sm4Dec => {
             let weak_app = weak_app.clone();
-            let mut pt = Vec::with_capacity(len - FRM_HEAD_LEN - FRM_TAIL_LEN);
-            pt.clone_from_slice(&buf[FRM_HEAD_LEN..len - FRM_TAIL_LEN]);
+            let mut pt = vec![0; len - FRM_HEAD_LEN - FRM_TAIL_LEN];
+            pt.clone_from_slice(&buf[..len - FRM_HEAD_LEN - FRM_TAIL_LEN]);
             invoke_from_event_loop(move || {
               weak_app
                 .unwrap()
                 .global::<Options>()
                 .invoke_append_dp_text(const_hex::encode(pt).into());
-            });
+            }).unwrap();
           }
         }
-        let weak_app = weak_app.clone();
-        invoke_from_event_loop(move || {
-          weak_app.unwrap().global::<Options>().invoke_append_dp_text("1".into());
-        });
       }
-      Err(_) => {}
+      Err(_) => {
+        debug!("error!");
+      }
     };
   }
 }

@@ -29,12 +29,12 @@ fn main() -> ! {
     HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE);
   }
   rtt_init_print!();
-  let mut buf = BytesMut::with_capacity(37);
+  let mut buf = BytesMut::with_capacity(39);
   buf.put_u8(0xC0);
   buf.put_u16(5 + 32 + 2);
-  buf.put_u8(1);
+  buf.put_u8(3);
   buf.put_u8(0);
-  buf.put_slice(b"89510356C2D3BB34B08E63649AEFB6DEEF36362970E4C9FA685B72DAFC330A1A");
+  buf.put_bytes(0xAF, 32);
   buf.put_u16(0);
 
   let board = microbit::Board::take().unwrap();
@@ -48,7 +48,6 @@ fn main() -> ! {
 
   loop {
     tx.bwrite_all(&buf).unwrap();
-    
     tx.flush();
   }
 }
