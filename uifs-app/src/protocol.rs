@@ -1,8 +1,8 @@
 use bytes::{BufMut, Bytes, BytesMut};
 use uifs_app::*;
+
 #[derive(num_enum::TryFromPrimitive)]
 #[repr(u8)]
-
 pub enum OpFlag {
   Key = 1,
   Sm3 = 2,
@@ -10,6 +10,7 @@ pub enum OpFlag {
   Sm4Dec = 4,
 }
 
+#[repr(u8)]
 pub enum Mode {
   CBC,
   ECB,

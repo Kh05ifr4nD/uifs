@@ -38,16 +38,25 @@ pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppW
         debug!(buf=?buf[..num],"");
         match tp.try_into().unwrap() {
           OpFlag::Key => {
+            if FRM_START_FLAG + 2 + FRM_TAIL_LEN != len {
+              debug!("Incorrect response len!");
+              buf.clear();
+              continue;
+            }
             if 0 == buf.get_u8() && 1 == buf.get_u8() {
               let weak_app = weak_app.clone();
               invoke_from_event_loop(move || {
                 weak_app.unwrap().global::<Options>().set_key_ready(true);
               }).unwrap();
+            } else {
+              debug!("Incorrect key flag!");
+              buf.clear();
+              continue;
             }
           }
           OpFlag::Sm3 => {
             if len != FRM_HEAD_LEN + SM3_HASH_LEN + FRM_TAIL_LEN {
-              debug!("error sm3 len!");
+              debug!("Error sm3 len!");
               buf.clear();
               continue;
             }

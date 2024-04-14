@@ -20,6 +20,7 @@ static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
+
 static mut TX_BUF: [u8; 1] = [0; 1];
 static mut RX_BUF: [u8; 1] = [0; 1];
 
@@ -29,14 +30,6 @@ fn main() -> ! {
     HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE);
   }
   rtt_init_print!();
-  let mut buf = BytesMut::with_capacity(39);
-  buf.put_u8(0xC0);
-  buf.put_u16(5 + 32 + 2);
-  buf.put_u8(3);
-  buf.put_u8(0);
-  buf.put_bytes(0xAF, 32);
-  buf.put_u16(0);
-
   let board = microbit::Board::take().unwrap();
 
   let serial =
@@ -46,10 +39,32 @@ fn main() -> ! {
     .split(unsafe { &mut *addr_of_mut!(TX_BUF) }, unsafe { &mut *addr_of_mut!(RX_BUF) })
     .unwrap();
 
-  loop {
-    tx.bwrite_all(&buf).unwrap();
-    tx.flush();
-  }
+  let mut buf = BytesMut::with_capacity(100);
+
+  buf.put_u8(0xC0);
+  buf.put_u16(5 + 2 + 2);
+  buf.put_u8(0);
+  buf.put_u8(0);
+  buf.put_u8(0);
+  buf.put_u8(1);
+  buf.put_u16(0);
+
+  tx.bwrite_all(&buf).unwrap();
+  tx.flush();
+  buf.clear();
+
+  // buf.put_u8(0xC0);
+  // buf.put_u16(5 + 32 + 2);
+  // buf.put_u8(0);
+  // buf.put_u8(0);
+  // buf.put_bytes(0xAF, 32);
+  // buf.put_u16(0);
+
+  // tx.bwrite_all(&buf).unwrap();
+  // tx.flush();
+  // buf.clear();
+
+  loop {}
 }
 
 #[inline(never)]

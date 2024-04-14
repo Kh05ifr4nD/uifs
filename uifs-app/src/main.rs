@@ -5,24 +5,22 @@ mod protocol;
 mod receiver;
 
 use serialport::{SerialPort, SerialPortInfo, SerialPortType};
-use slint::{ModelRc, Weak, Window};
-use std::env;
+use slint::{ModelRc, Weak};
+
 use tracing::{debug, error, info, trace, warn};
-use uifs_app::{
-  mk_err_str, slint_f, we, Opt, Rst, FRM_HEAD_LEN, FRM_PRESERVE_FLAG, FRM_START_FLAG,
-  RX_SM3_RTN_LEN, SP_BAUD_RATE, SP_TIMEOUT, TX_MSG_MAX_LEN,
-};
+use uifs_app::{mk_err_str, slint_f, we, Opt, Rst, SP_BAUD_RATE, SP_TIMEOUT, TX_MSG_MAX_LEN};
 
 use crate::protocol::{key, sm3, sm4_dec_cbc, sm4_dec_ecb, sm4_enc_cbc, sm4_enc_ecb};
 
-use mimalloc::MiMalloc;
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+// use mimalloc::MiMalloc;
+// #[global_allocator]
+// static GLOBAL: MiMalloc = MiMalloc;
 
 use core::cell::{OnceCell, RefCell};
 thread_local! {
   static ALL_SPS: OnceCell<Vec<SerialPortInfo>> = OnceCell::new();
   static CUR_LSN_HNDLR: RefCell<Opt<tokio::task::JoinHandle<()>>> = RefCell::new(None);
+  static CUR_SP: RefCell<Opt<Box<dyn SerialPort>>> = RefCell::new(None);
   static WEAK_APP: OnceCell<Weak<AppWindow>> = OnceCell::new();
 }
 
@@ -33,9 +31,10 @@ static CUR_SP_IDX: AtomicI32 = AtomicI32::new(-1);
 async fn main() -> Rst<()> {
   // !!! the result should never be ignored or named `_` !!!
   let _guards = {
-    let log_dir = env::var("UIFS_LOG_DIR").unwrap_or("./log".to_string());
-    let log_to_file = env::var("UIFS_DIS_LOG_FILE").is_err();
-    let log_to_cnsl = env::var("UIFS_ENBL_LOG_CNSL").is_ok();
+    use std::env::var;
+    let log_dir = var("UIFS_LOG_DIR").unwrap_or("./log".to_string());
+    let log_to_file = var("UIFS_DIS_LOG_FILE").is_err();
+    let log_to_cnsl = var("UIFS_ENBL_LOG_CNSL").is_ok();
     logger::Config::new(&log_dir, log_to_file, log_to_cnsl).init().await?
   };
 
@@ -100,6 +99,10 @@ async fn main() -> Rst<()> {
         .open()
       {
         Ok(cur_sp) => {
+          let replace_sp = cur_sp.try_clone().unwrap();
+          CUR_SP.with_borrow_mut(|sp|{
+            sp.replace(replace_sp);
+          });
           info!(sel_sp_idx = sel_sp_idx, sel_sp = ?sel_sp, "Successfully opened selected sp.");
           WEAK_APP.with(|w|{
             let w = w.get().unwrap().clone();
@@ -120,336 +123,86 @@ async fn main() -> Rst<()> {
     rst
   });
 
-  // app.global::<Options>().on_key_send(|k| {
-  //   let bytes = k.as_bytes();
-  //   if 16 != bytes.len() {
-  //     warn!(key_len = bytes.len(), "Incorrect key length!");
-  //     return false;
-  //   }
-  //   if let Err(e) = const_hex::check(bytes) {
-  //     warn!(key = ?k, "{}", mk_err_str(e, "Incorrect key format!"));
-  //     return false;
-  //   }
-  //   let send_key = key(bytes.try_into().unwrap());
+  app.global::<Options>().on_key_send(|k| {
+    let bytes = k.as_bytes();
+    if 16 != bytes.len() {
+      warn!(key_len = bytes.len(), "Incorrect key length!");
+      return;
+    }
+    if let Err(e) = const_hex::check(bytes) {
+      warn!(key = ?k, "{}", mk_err_str(e, "Incorrect key format!"));
+      return;
+    }
 
-  //   CUR_SP_RC.with(|rc| {
-  //     let mut cur_sp = rc.borrow_mut();
-  //     let cur_sp = cur_sp.as_mut().unwrap();
+    let send_key = key(bytes.try_into().unwrap());
 
-  //     if let Err(e) = cur_sp.write_all(&send_key.as_ref()) {
-  //       error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send key to FPGA!"));
-  //       return false;
-  //     };
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_key.as_ref()) {
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send key to FPGA!"));
+      };
+    })
+  });
 
-  //     sleep(SP_TIMEOUT);
+  app.global::<Options>().on_send_sm3(|msg| {
+    if msg.len() > TX_MSG_MAX_LEN {
+      warn!(msg_len = msg.len(), "Message is too long!");
+      return;
+    };
 
-  //     match cur_sp.bytes_to_read() {
-  //       Ok(rst_len) => {
-  //         debug!(rst_len = rst_len, "Got bytes to read from FPGA.");
-  //         let mut buf = BytesMut::with_capacity(RX_SM3_RTN_LEN);
-  //         match cur_sp.read(buf.as_mut()) {
-  //           Ok(read_len) => {
-  //             debug!(read_len = read_len, "Reading bytes finished.");
-  //           }
-  //           Err(e) => {
-  //             error!("{}", mk_err_str(e, "Failed to read bytes!"));
-  //             return false;
-  //           }
-  //         };
+    let send_msg = sm3(msg.as_bytes());
 
-  //         if FRM_START_FLAG != buf.get_u8()
-  //           || 9 != buf.get_u16() as usize
-  //           || protocol::OpFlag::Key as u8 != buf.get_u8()
-  //           || FRM_PRESERVE_FLAG != buf.get_u8()
-  //         {
-  //           error!(
-  //               rtn_frame_head = ?buf[0..FRM_HEADER_LEN],
-  //               "FPGA Backend returned invalid frame format!"
-  //           );
-  //           false
-  //         } else {
-  //           trace!(buf=?buf, "Successfully received the result.");
-  //           true
-  //         }
-  //       }
-  //       Err(e) => {
-  //         error!("{}", mk_err_str(e, "Failed to get bytes to read!"));
-  //         false
-  //       }
-  //     }f
-  //   })
-  // });
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_msg.as_ref()) {
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+      };
+    })
+  });
 
-  // app.global::<Options>().on_send_sm3(|msg| {
-  //   if msg.len() > TX_MSG_MAX_LEN {
-  //     warn!(msg_len = msg.len(), "Message is too long!");
-  //     return slint_f!("消息过长！（大于 65408 位）\n");
-  //   };
+  app.global::<Options>().on_send_sm4e_cbc(|pt, iv| {
+    if 16 != iv.len() {
+      let e = "Incorrect iv length!";
+      error!("{e}");
+      return;
+    }
 
-  //   let send_msg = sm3(msg.as_bytes());
+    let send_pt = sm4_enc_cbc(pt.as_bytes().try_into().unwrap(), iv.as_bytes().try_into().unwrap());
 
-  //   CUR_SP_RC.with(|rc| {
-  //     let mut cur_sp = rc.borrow_mut();
-  //     let cur_sp = cur_sp.as_mut().unwrap();
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
+        let e = mk_err_str(e, "Failed to send message to FPGA!");
+        warn!(cur_sp = ?cur_sp, "{e}");
+      };
+    })
+  });
 
-  //     if let Err(e) = cur_sp.write_all(&send_msg.as_ref()) {
-  //       error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
-  //       return slint_f!("Failed to send message to FPGA!");
-  //     };
+  app.global::<Options>().on_send_sm4e_ecb(|pt| {
+    let ct = sm4_enc_ecb(pt.as_bytes());
 
-  //     sleep(SP_TIMEOUT);
+    CUR_SP.with_borrow_mut(|cur_sp| {
+  
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&ct) {
+        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+      };
+    })
+  });
 
-  //     match cur_sp.bytes_to_read() {
-  //       Ok(rst_len) => {
-  //         debug!(rst_len = rst_len, "Got bytes to read from FPGA.");
-  //         let mut buf = BytesMut::with_capacity(RX_SM3_RTN_LEN);
-  //         match cur_sp.read(buf.as_mut()) {
-  //           Ok(read_len) => {
-  //             debug!(read_len = read_len, "Reading bytes finished.");
-  //           }
-  //           Err(e) => {
-  //             let e = mk_err_str(e, "Failed to read bytes!");
-  //             error!("{e}");
-  //             return slint_f!("{e}");
-  //           }
-  //         };
+  app.global::<Options>().on_send_sm4d_cbc(|ct, iv| {
+    let ct = sm4_dec_cbc(ct.as_bytes(), iv.as_bytes().try_into().unwrap());
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&ct) {
+        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+      };
+    })
+  });
 
-  //         if FRM_START_FLAG != buf.get_u8()
-  //           || RX_SM3_RTN_LEN != buf.get_u16() as usize
-  //           || protocol::OpFlag::Sm3 as u8 != buf.get_u8()
-  //           || FRM_PRESERVE_FLAG != buf.get_u8()
-  //         {
-  //           error!(
-  //               rtn_frame_head = ?buf[0..FRM_HEADER_LEN],
-  //               "FPGA Backend returned invalid frame format!"
-  //           );
-  //           slint_f!("FPGA Backend returned invalid frame format!")
-  //         } else {
-  //           trace!(buf=?buf, "Successfully received the result.");
-  //           const_hex::encode(&buf[FRM_HEADER_LEN..buf.len() - 2]).into()
-  //         }
-  //       }
-  //       Err(e) => {
-  //         let e = mk_err_str(e, "Failed to get bytes to read!");
-  //         error!("{e}");
-  //         slint_f!("{e}")
-  //       }
-  //     }
-  //   })
-  // });
-
-  // app.global::<Options>().on_send_sm4e_cbc(|pt, iv| {
-  //   if 16 != iv.len() {
-  //     let e = "Incorrect iv length!";
-  //     error!("{e}");
-  //     return slint_f!("{e}");
-  //   }
-  //   let send_pt = sm4_enc_cbc(pt.as_bytes().try_into().unwrap(), iv.as_bytes().try_into().unwrap());
-
-  //   CUR_SP_RC.with(|rc| {
-  //     let mut cur_sp = rc.borrow_mut();
-  //     let cur_sp = cur_sp.as_mut().unwrap();
-
-  //     if let Err(e) = cur_sp.write_all(&send_pt) {
-  //       let e = mk_err_str(e, "Failed to send message to FPGA!");
-  //       error!(cur_sp = ?cur_sp, "{e}");
-  //       return slint_f!("{e}");
-  //     };
-
-  //     sleep(SP_TIMEOUT);
-
-  //     match cur_sp.bytes_to_read() {
-  //       Ok(rst_len) => {
-  //         debug!(rst_len = rst_len, "Got bytes to read from FPGA.");
-  //         let mut buf = BytesMut::with_capacity(rst_len as usize);
-  //         match cur_sp.read(buf.as_mut()) {
-  //           Ok(read_len) => {
-  //             debug!(read_len = read_len, "Reading bytes finished.");
-  //           }
-  //           Err(e) => {
-  //             let e = mk_err_str(e, "Failed to read bytes!");
-  //             error!("{e}");
-  //             return slint_f!("{e}");
-  //           }
-  //         };
-
-  //         if FRM_START_FLAG != buf.get_u8()
-  //           || FRM_HEADER_LEN < buf.get_u16() as usize
-  //           || protocol::OpFlag::Sm4Enc as u8 != buf.get_u8()
-  //           || FRM_PRESERVE_FLAG != buf.get_u8()
-  //         {
-  //           error!(
-  //               rtn_frame_head = ?buf[0..FRM_HEADER_LEN],
-  //               "FPGA Backend returned invalid frame format!"
-  //           );
-  //           slint_f!("FPGA Backend returned invalid frame format!")
-  //         } else {
-  //           trace!(buf=?buf, "Successfully received the result.");
-  //           const_hex::encode(&buf[FRM_HEADER_LEN..buf.len() - 2]).into()
-  //         }
-  //       }
-  //       Err(e) => {
-  //         error!("{}", mk_err_str(e, "Failed to get bytes to read!"));
-  //         slint_f!("")
-  //       }
-  //     }
-  //   })
-  // });
-
-  // app.global::<Options>().on_send_sm4e_ecb(|pt| {
-  //   let ct = sm4_enc_ecb(pt.as_bytes());
-
-  //   CUR_SP_RC.with(|rc| {
-  //     let mut cur_sp = rc.borrow_mut();
-  //     let cur_sp = cur_sp.as_mut().unwrap();
-
-  //     if let Err(e) = cur_sp.write_all(&ct) {
-  //       error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
-  //       return slint_f!("Failed to send message to FPGA!");
-  //     };
-
-  //     sleep(SP_TIMEOUT);
-
-  //     match cur_sp.bytes_to_read() {
-  //       Ok(rst_len) => {
-  //         debug!(rst_len = rst_len, "Got bytes to read from FPGA.");
-  //         let mut buf = BytesMut::with_capacity(rst_len as usize);
-  //         match cur_sp.read(buf.as_mut()) {
-  //           Ok(read_len) => {
-  //             debug!(read_len = read_len, "Reading bytes finished.");
-  //           }
-  //           Err(e) => {
-  //             let e = mk_err_str(e, "Failed to read bytes!");
-  //             error!("{e}");
-  //             return slint_f!("{e}");
-  //           }
-  //         };
-
-  //         if FRM_START_FLAG != buf.get_u8()
-  //           || FRM_HEADER_LEN < buf.get_u16() as usize
-  //           || protocol::OpFlag::Sm4Dec as u8 != buf.get_u8()
-  //           || FRM_PRESERVE_FLAG != buf.get_u8()
-  //         {
-  //           error!(
-  //               rtn_frame_head = ?buf[0..FRM_HEADER_LEN],
-  //               "FPGA Backend returned invalid frame format!"
-  //           );
-  //           slint_f!("FPGA Backend returned invalid frame format!")
-  //         } else {
-  //           trace!(buf=?buf, "Successfully received the result.");
-  //           const_hex::encode(&buf[FRM_HEADER_LEN..buf.len() - 2]).into()
-  //         }
-  //       }
-  //       Err(e) => {
-  //         error!("{}", mk_err_str(e, "Failed to get bytes to read!"));
-  //         slint_f!("")
-  //       }
-  //     }
-  //   })
-  // });
-
-  // app.global::<Options>().on_send_sm4d_cbc(|ct, iv| {
-  //   let ct = sm4_dec_cbc(ct.as_bytes(), iv.as_bytes().try_into().unwrap());
-
-  //   CUR_SP_RC.with(|rc| {
-  //     let mut cur_sp = rc.borrow_mut();
-  //     let cur_sp = cur_sp.as_mut().unwrap();
-
-  //     if let Err(e) = cur_sp.write_all(&ct) {
-  //       error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
-  //       return slint_f!("Failed to send message to FPGA!");
-  //     };
-
-  //     sleep(SP_TIMEOUT);
-
-  //     match cur_sp.bytes_to_read() {
-  //       Ok(rst_len) => {
-  //         debug!(rst_len = rst_len, "Got bytes to read from FPGA.");
-  //         let mut buf = BytesMut::with_capacity(rst_len as usize);
-  //         match cur_sp.read(buf.as_mut()) {
-  //           Ok(read_len) => {
-  //             debug!(read_len = read_len, "Reading bytes finished.");
-  //           }
-  //           Err(e) => {
-  //             let e = mk_err_str(e, "Failed to read bytes!");
-  //             error!("{e}");
-  //             return slint_f!("{e}");
-  //           }
-  //         };
-
-  //         if FRM_START_FLAG != buf.get_u8()
-  //           || FRM_HEADER_LEN < buf.get_u16() as usize
-  //           || protocol::OpFlag::Sm4Dec as u8 != buf.get_u8()
-  //           || FRM_PRESERVE_FLAG != buf.get_u8()
-  //         {
-  //           error!(
-  //               rtn_frame_head = ?buf[0..FRM_HEADER_LEN],
-  //               "FPGA Backend returned invalid frame format!"
-  //           );
-  //           slint_f!("FPGA Backend returned invalid frame format!")
-  //         } else {
-  //           trace!(buf=?buf, "Successfully received the result.");
-  //           const_hex::encode(&buf[FRM_HEADER_LEN..buf.len() - 2]).into()
-  //         }
-  //       }trace
-  //         error!("{}", mk_err_str(e, "Failed to get bytes to read!"));
-  //         slint_f!("")
-  //       }
-  //     }
-  //   })
-  // });
-
-  // app.global::<Options>().on_send_sm4d_ecb(|ct| {
-  //   let ct = sm4_dec_ecb(ct.as_bytes());
-
-  //   CUR_SP_RC.with(|rc| {
-  //     let mut cur_sp = rc.borrow_mut();
-  //     let cur_sp = cur_sp.as_mut().unwrap();
-
-  //     if let Err(e) = cur_sp.write_all(&ct) {
-  //       error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
-  //       return slint_f!("Failed to send message to FPGA!");
-  //     };
-
-  //     sleep(SP_TIMEOUT);
-
-  //     match cur_sp.bytes_to_read() {
-  //       Ok(rst_len) => {
-  //         debug!(rst_len = rst_len, "Got bytes to read from FPGA.");
-  //         let mut buf = BytesMut::with_capacity(rst_len as usize);
-  //         match cur_sp.read(buf.as_mut()) {
-  //           Ok(read_len) => {
-  //             debug!(read_len = read_len, "Reading bytes finished.");
-  //           }
-  //           Err(e) => {
-  //             let e = mk_err_str(e, "Failed to read bytes!");
-  //             error!("{e}");
-  //             return slint_f!("{e}");
-  //           }
-  //         };
-
-  //         if FRM_START_FLAG != buf.get_u8()
-  //           || FRM_HEADER_LEN < buf.get_u16() as usize
-  //           || protocol::OpFlag::Sm4Dec as u8 != buf.get_u8()
-  //           || FRM_PRESERVE_FLAG != buf.get_u8()
-  //         {
-  //           error!(
-  //               rtn_frame_head = ?buf[0..FRM_HEADER_LEN],
-  //               "FPGA Backend returned invalid frame format!"
-  //           );
-  //           slint_f!("FPGA Backend returned invalid frame format!")
-  //         } else {
-  //           trace!(buf=?buf, "Successfully received the result.");
-  //           const_hex::encode(&buf[FRM_HEADER_LEN..buf.len() - 2]).into()
-  //         }
-  //       }
-  //       Err(e) => {
-  //         error!("{}", mk_err_str(e, "Failed to get bytes to read!"));
-  //         slint_f!("")
-  //       }
-  //     }
-  //   })
-  // });
+  app.global::<Options>().on_send_sm4d_ecb(|ct| {
+    let ct = sm4_dec_ecb(ct.as_bytes());
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&ct) {
+        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+      };
+    })
+  });
 
   trace!("Start running GUI.");
 
@@ -469,5 +222,3 @@ async fn main() -> Rst<()> {
 
   Ok(())
 }
-
-

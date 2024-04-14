@@ -17,14 +17,14 @@ workspace = true
 [dependencies.const-hex]
 version = "1.11"
 
-[dependencies.miette]
-version = "7"
-features = ["fancy"]
+# [dependencies.miette]
+# version = "7"
+# features = ["fancy"]
 
 
-[dependencies.mimalloc]
-version = "0.1"
-features = []
+# [dependencies.mimalloc]
+# version = "0.1"
+# features = []
 
 [dependencies.num_enum]
 version = "0"

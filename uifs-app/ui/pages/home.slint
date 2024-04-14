@@ -9,12 +9,12 @@ export global Options {
     in property <[string]> sps;
     out property <string> dp-text;
     callback append-dp-text(string);
-    callback key-send(string) -> bool;
-    callback send-sm3(string) -> string;
-    callback send-sm4e-cbc(string, string) -> string;
-    callback send-sm4e-ecb(string) -> string;
-    callback send-sm4d-cbc(string, string) -> string;
-    callback send-sm4d-ecb(string) -> string;
+    callback key-send(string);
+    callback send-sm3(string);
+    callback send-sm4e-cbc(string, string);
+    callback send-sm4e-ecb(string);
+    callback send-sm4d-cbc(string, string);
+    callback send-sm4d-ecb(string);
     callback sp-open(int) -> bool;
 
     append-dp-text(newline) => {
@@ -137,7 +137,7 @@ export component HomePage inherits HorizontalLayout {
                     primary: Options.key-ready;
                     text: self.primary ? "成功" : "发送密钥";
                     clicked => {
-                        self.primary = Options.key-send(key-line.text);
+                        Options.key-send(key-line.text);
                     }
                 }
             }
