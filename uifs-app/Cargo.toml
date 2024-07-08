@@ -10,28 +10,17 @@ homepage = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
 build = "build.rs"
+default-run = "uifs-app"
 
 [dependencies.bytes]
 workspace = true
 
 [dependencies.const-hex]
-version = "1.11"
-
-# [dependencies.miette]
-# version = "7"
-# features = ["fancy"]
-
-
-# [dependencies.mimalloc]
-# version = "0.1"
-# features = []
+version = "1"
 
 [dependencies.num_enum]
 version = "0"
-
-[dependencies.serde]
-version = "1.0"
-features = ["derive"]
+default-features = false
 
 [dependencies.serialport]
 version = "4"
@@ -39,17 +28,16 @@ features = []
 default-features = false
 
 [dependencies.slint]
-version = "1"
-features = ["compat-1-2", "software-renderer-systemfonts"]
+version = "1.6"
+features = ["compat-1-2"]
 default-features = false
 
 [dependencies.snafu]
 version = "0.8"
-features = []
 
 [dependencies.tokio]
 version = "1.36"
-features = ["rt-multi-thread", "fs", "macros", "sync", "time"]
+features = ["rt-multi-thread", "fs", "macros", "time"]
 default-features = false
 
 [dependencies.tracing]
@@ -68,7 +56,7 @@ features = ["ansi", "chrono", "parking_lot", "env-filter"]
 default-features = false
 
 [build-dependencies]
-slint-build = "1"
+slint-build = "1.6"
 
 [features]
 default = ["slint/backend-winit", "slint/renderer-femtovg"]

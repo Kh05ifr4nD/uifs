@@ -135,12 +135,25 @@ async fn main() -> Rst<()> {
     }
 
     let send_key = key(bytes.try_into().unwrap());
+    debug!(send_key=?send_key);
 
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_key.as_ref()) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send key to FPGA!"));
       };
     })
+  });
+
+  app.global::<Options>().on_send_test(|msg| {
+    if msg.len() > TX_MSG_MAX_LEN {
+      warn!(msg_len = msg.len(), "Message is too long!");
+      return;
+    };
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(msg.as_bytes()) {
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+      };
+    });
   });
 
   app.global::<Options>().on_send_sm3(|msg| {
@@ -150,12 +163,13 @@ async fn main() -> Rst<()> {
     };
 
     let send_msg = sm3(msg.as_bytes());
+    debug!(send_msg=?send_msg.as_ref());
 
     CUR_SP.with_borrow_mut(|cur_sp| {
-      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_msg.as_ref()) {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(send_msg.as_ref()) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
       };
-    })
+    });
   });
 
   app.global::<Options>().on_send_sm4e_cbc(|pt, iv| {
@@ -163,10 +177,10 @@ async fn main() -> Rst<()> {
       let e = "Incorrect iv length!";
       error!("{e}");
       return;
-    }
+    };
 
     let send_pt = sm4_enc_cbc(pt.as_bytes().try_into().unwrap(), iv.as_bytes().try_into().unwrap());
-
+    debug!(send_pt=?send_pt);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
         let e = mk_err_str(e, "Failed to send message to FPGA!");
@@ -176,29 +190,36 @@ async fn main() -> Rst<()> {
   });
 
   app.global::<Options>().on_send_sm4e_ecb(|pt| {
-    let ct = sm4_enc_ecb(pt.as_bytes());
+    let send_pt = sm4_enc_ecb(pt.as_bytes());
+    debug!(send_pt=?send_pt);
 
     CUR_SP.with_borrow_mut(|cur_sp| {
-  
-      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&ct) {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
         error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
       };
     })
   });
 
   app.global::<Options>().on_send_sm4d_cbc(|ct, iv| {
-    let ct = sm4_dec_cbc(ct.as_bytes(), iv.as_bytes().try_into().unwrap());
+    if 16 != iv.len() {
+      let e = "Incorrect iv length!";
+      error!("{e}");
+      return;
+    };
+    let send_ct = sm4_dec_cbc(ct.as_bytes(), iv.as_bytes().try_into().unwrap());
+    debug!(send_ct=?send_ct);
     CUR_SP.with_borrow_mut(|cur_sp| {
-      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&ct) {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_ct) {
         error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
       };
     })
   });
 
   app.global::<Options>().on_send_sm4d_ecb(|ct| {
-    let ct = sm4_dec_ecb(ct.as_bytes());
+    let send_ct = sm4_dec_ecb(ct.as_bytes());
+    debug!(send_ct=?send_ct);
     CUR_SP.with_borrow_mut(|cur_sp| {
-      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&ct) {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_ct) {
         error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
       };
     })

@@ -5,9 +5,9 @@ use tracing_subscriber::fmt::{self, time::ChronoLocal};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use uifs_app::{mk_err_str, we, Dbg, Deser, Opt, Rst, Ser};
+use uifs_app::{mk_err_str, we, Dbg, Opt, Rst};
 
-#[derive(Clone, Dbg, PartialEq, Ser, Deser)]
+#[derive(Clone, Dbg, PartialEq)]
 pub struct Config<'s> {
   log_dir: &'s str,
   log_to_file: bool,

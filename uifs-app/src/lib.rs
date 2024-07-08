@@ -1,7 +1,6 @@
 pub use core::fmt::Debug as Dbg;
 pub use core::option::Option as Opt;
 use core::time::Duration as Durn;
-pub use serde::{Deserialize as Deser, Serialize as Ser};
 pub use slint::{format as slint_f, SharedString as SlintStr};
 pub use snafu::whatever as we;
 use std::error::Error;
@@ -16,6 +15,8 @@ pub const FRM_PRESERVE_FLAG: u8 = 0;
 pub const FRM_PAR_FLAG: u16 = 0;
 pub const FRM_START_FLAG: u8 = 0xC0;
 pub const FRM_TAIL_LEN: usize = 2;
+pub const IV_LEN: usize = 16;
+pub const KEY_LEN: usize = 16;
 pub const RX_SM3_RTN_LEN: usize = FRM_HEAD_LEN + 32;
 pub const SM3_HASH_LEN: usize = 32;
 pub const SM3_PAD_FLAG: u8 = 0x80;

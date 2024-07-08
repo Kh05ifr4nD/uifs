@@ -43,7 +43,7 @@ fn main() -> ! {
 
   buf.put_u8(0xC0);
   buf.put_u16(5 + 2 + 2);
-  buf.put_u8(0);
+  buf.put_u8(1);
   buf.put_u8(0);
   buf.put_u8(0);
   buf.put_u8(1);

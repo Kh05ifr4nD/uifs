@@ -17,14 +17,14 @@ pub enum Mode {
 }
 
 pub fn key(k: &[u8; 16]) -> Bytes {
-  const FRM_LEN: usize = FRM_HEAD_LEN + 16 + FRM_TAIL_LEN;
+  const FRM_LEN: usize = FRM_HEAD_LEN + KEY_LEN + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(FRM_LEN);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(FRM_LEN as u16);
   buf.put_u8(OpFlag::Key as u8);
   buf.put_u8(FRM_PRESERVE_FLAG);
   buf.put_slice(k);
-  buf.put_u16(FRM_PAR_FLAG as u16);
+  buf.put_u16(FRM_PAR_FLAG);
   buf.freeze()
 }
 
@@ -38,13 +38,11 @@ pub fn sm3(m: &[u8]) -> Bytes {
   buf.put_u16(frm_len as u16);
   buf.put_u8(OpFlag::Sm3 as u8);
   buf.put_u8(FRM_PRESERVE_FLAG);
-
   buf.put_slice(m);
   buf.put_u8(SM3_PAD_FLAG);
   buf.put_bytes(0, pad_len - m.len() - 1 - 8);
   buf.put_u64(m.len() as u64 * 8);
-
-  buf.put_u16(FRM_PAR_FLAG as u16);
+  buf.put_u16(FRM_PAR_FLAG);
   buf.freeze()
 }
 
@@ -58,13 +56,11 @@ pub fn sm4_enc_cbc(pt: &[u8], iv: &[u8; 16]) -> Bytes {
   buf.put_u16(frm_len as u16);
   buf.put_u8(OpFlag::Sm4Enc as u8);
   buf.put_u8(FRM_PRESERVE_FLAG);
-
-  buf.put_slice(pt);
-  buf.put_bytes(0, pad_len - pt.len());
   buf.put_u8(Mode::CBC as u8);
   buf.put_slice(iv);
-
-  buf.put_u16(FRM_PAR_FLAG as u16);
+  buf.put_slice(pt);
+  buf.put_bytes(0, pad_len - pt.len());
+  buf.put_u16(FRM_PAR_FLAG);
   buf.freeze()
 }
 
@@ -75,13 +71,11 @@ pub fn sm4_enc_ecb(ct: &[u8]) -> Bytes {
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(frm_len as u16);
-  buf.put_u8(OpFlag::Sm4Dec as u8);
+  buf.put_u8(OpFlag::Sm4Enc as u8);
   buf.put_u8(FRM_PRESERVE_FLAG);
-
-  buf.put_slice(ct);
   buf.put_u8(Mode::ECB as u8);
-
-  buf.put_u16(FRM_PAR_FLAG as u16);
+  buf.put_slice(ct);
+  buf.put_u16(FRM_PAR_FLAG);
   buf.freeze()
 }
 
@@ -93,13 +87,10 @@ pub fn sm4_dec_cbc(ct: &[u8], iv: &[u8; 16]) -> Bytes {
   buf.put_u16(frm_len as u16);
   buf.put_u8(OpFlag::Sm4Dec as u8);
   buf.put_u8(FRM_PRESERVE_FLAG);
-
-  buf.put_slice(ct);
-
-  buf.put_u8(Mode::ECB as u8);
+  buf.put_u8(Mode::CBC as u8);
   buf.put_slice(iv);
-
-  buf.put_u16(FRM_PAR_FLAG as u16);
+  buf.put_slice(ct);
+  buf.put_u16(FRM_PAR_FLAG);
   buf.freeze()
 }
 
@@ -110,10 +101,8 @@ pub fn sm4_dec_ecb(ct: &[u8]) -> Bytes {
   buf.put_u16(frm_len as u16);
   buf.put_u8(OpFlag::Sm4Dec as u8);
   buf.put_u8(FRM_PRESERVE_FLAG);
-
-  buf.put_slice(ct);
   buf.put_u8(Mode::ECB as u8);
-
-  buf.put_u16(FRM_PAR_FLAG as u16);
+  buf.put_slice(ct);
+  buf.put_u16(FRM_PAR_FLAG);
   buf.freeze()
 }
