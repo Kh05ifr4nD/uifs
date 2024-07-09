@@ -8,7 +8,7 @@ description = "GUI part for uifs."
 readme = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
-license = { workspace = true }
+license-file = { workspace = true }
 build = "build.rs"
 default-run = "uifs-app"
 
