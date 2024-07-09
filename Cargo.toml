@@ -12,7 +12,7 @@ description = "A simple user interface for teaching-use FPGA via serial port, bu
 readme = "README.md"
 homepage = "https://github.com/meandssh/uifs"
 repository = "https://github.com/meandssh/uifs"
-license = "MIT"
+
 
 [workspace.dependencies]
 bytes = { version = "1", default-features = false }

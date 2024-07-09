@@ -145,6 +145,7 @@ async fn main() -> Rst<()> {
   });
 
   app.global::<Options>().on_send_test(|msg| {
+    info!(msg = msg.as_str(), "msg");
     if msg.len() > TX_MSG_MAX_LEN {
       warn!(msg_len = msg.len(), "Message is too long!");
       return;
