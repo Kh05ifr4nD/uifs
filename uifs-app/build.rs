@@ -1,5 +1,5 @@
 const MAIN_PATH: &str = "ui/app.slint";
-const STYLE: &str = "fluent-light";
+const STYLE: &str = "fluent";
 
 fn main() {
   let conf = slint_build::CompilerConfiguration::new().with_style(STYLE.into());

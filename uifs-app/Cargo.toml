@@ -16,53 +16,50 @@ default-run = "uifs-app"
 workspace = true
 
 [dependencies.const-hex]
-version = "1"
+version = "1.12.0"
 
 [dependencies.num_enum]
-version = "0"
+version = "0.7.3"
 default-features = false
 
 [dependencies.serialport]
-version = "4"
+version = "4.5.0"
 features = []
 default-features = false
 
 [dependencies.slint]
-version = "1.6"
+version = "1.7.2"
 features = ["compat-1-2"]
 default-features = false
 
 [dependencies.snafu]
-version = "0.8"
+version = "0.8.4"
 
 [dependencies.tokio]
-version = "1.36"
+version = "1.40.0"
 features = ["rt-multi-thread", "fs", "macros", "time"]
 default-features = false
 
 [dependencies.tracing]
-version = "0.1"
+version = "0.1.40"
 features = []
 default-features = false
 
 [dependencies.tracing-appender]
-version = "0.2"
+version = "0.2.3"
 features = []
 default-features = false
 
 [dependencies.tracing-subscriber]
-version = "0.3"
+version = "0.3.18"
 features = ["ansi", "chrono", "parking_lot", "env-filter"]
 default-features = false
 
 [build-dependencies]
-slint-build = "1.6"
+slint-build = "1.7.2"
 
 [features]
-default = ["slint/backend-winit", "slint/renderer-femtovg"]
-qt = ["slint/backend-qt", "slint/renderer-femtovg"]
-skia = ["slint/backend-winit", "slint/renderer-skia"]
-soft = ["slint/backend-winit", "slint/renderer-software"]
-vulkan = ["slint/backend-winit", "slint/renderer-skia-vulkan"]
-wayland = ["slint/backend-winit-wayland", "slint/renderer-femtovg"]
-x11 = ["slint/backend-winit-x11", "slint/renderer-femtovg"]
+default = [
+    "slint/backend-default",
+    "slint/renderer-femtovg"
+]

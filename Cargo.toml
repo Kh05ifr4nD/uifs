@@ -15,4 +15,4 @@ repository = "https://github.com/meandssh/uifs"
 license-file = "LICENSE"
 
 [workspace.dependencies]
-bytes = { version = "1", default-features = false }
+bytes = { version = "1.7.1", default-features = false }

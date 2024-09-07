@@ -12,10 +12,6 @@ use uifs_app::{mk_err_str, slint_f, we, Opt, Rst, SP_BAUD_RATE, SP_TIMEOUT, TX_M
 
 use crate::protocol::{key, sm3, sm4_dec_cbc, sm4_dec_ecb, sm4_enc_cbc, sm4_enc_ecb};
 
-// use mimalloc::MiMalloc;
-// #[global_allocator]
-// static GLOBAL: MiMalloc = MiMalloc;
-
 use core::cell::{OnceCell, RefCell};
 thread_local! {
   static ALL_SPS: OnceCell<Vec<SerialPortInfo>> = OnceCell::new();
