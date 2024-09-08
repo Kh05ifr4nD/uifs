@@ -10,7 +10,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 license-file = { workspace = true }
 build = "build.rs"
-default-run = "uifs-app"
+
 
 [dependencies.bytes]
 workspace = true
