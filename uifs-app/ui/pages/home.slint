@@ -87,7 +87,7 @@ export component HomePage inherits HorizontalLayout {
             SplitLine { }
 
             SideSection {
-                enabled: 2 == op-box.current-index || 3 == op-box.current-index;
+                visible: 2 == op-box.current-index || 3 == op-box.current-index;
                 title: "SM4";
                 SideRow {
                     visible: parent.enabled;

@@ -1,107 +1,135 @@
 use core::time::Duration;
 
 use crate::{mk_err_str, protocol::OpFlag, AppWindow, Options};
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 use slint::{invoke_from_event_loop, ComponentHandle, Weak};
-use tracing::debug;
+use tracing::{debug, info, warn};
 use uifs_app::{
-  FRM_HEAD_LEN, FRM_MAX_LEN, FRM_PRESERVE_FLAG, FRM_START_FLAG, FRM_TAIL_LEN, SM3_HASH_LEN,
+  slint_f, FRM_HEAD_LEN, FRM_MAX_LEN, FRM_MIN_LEN, FRM_START_FLAG, FRM_TAIL_LEN, SM3_HASH_LEN,
 };
 
+async fn handle_key_response(frame_length: usize, no_head_frame: &[u8], weak_app: Weak<AppWindow>) {
+  info!("密钥注入响应");
+  if FRM_HEAD_LEN + 1 + FRM_TAIL_LEN != frame_length {
+    warn!("帧长度有误");
+    return;
+  }
+  if 0x01 != no_head_frame[0] {
+    warn!("意外标识：{}", no_head_frame[0]);
+    return;
+  }
+  invoke_from_event_loop(move || {
+    weak_app.unwrap().global::<Options>().set_key_ready(true);
+  })
+  .unwrap();
+}
+
+async fn handle_sm3_response(frame_length: usize, no_head_frame: &[u8], weak_app: Weak<AppWindow>) {
+  info!("SM3 散列响应");
+  if FRM_HEAD_LEN + SM3_HASH_LEN + FRM_TAIL_LEN != frame_length {
+    warn!("帧长度有误");
+    return;
+  }
+
+  let mut hash = vec![0u8; SM3_HASH_LEN];
+  hash.clone_from_slice(&no_head_frame[..no_head_frame.len() - FRM_TAIL_LEN]);
+  invoke_from_event_loop(move || {
+    weak_app
+      .unwrap()
+      .global::<Options>()
+      .invoke_append_dp_text(slint_f!("SM3：{}", const_hex::encode(hash)));
+  })
+  .unwrap();
+}
+
+async fn handle_sm4_enc_response(
+  frame_length: usize,
+  no_head_frame: &[u8],
+  weak_app: Weak<AppWindow>,
+) {
+  info!("SM4 加密响应");
+  let mut ct = vec![0; frame_length - FRM_HEAD_LEN - FRM_TAIL_LEN];
+  ct.clone_from_slice(&no_head_frame[..no_head_frame.len() - FRM_TAIL_LEN]);
+  invoke_from_event_loop(move || {
+    weak_app
+      .unwrap()
+      .global::<Options>()
+      .invoke_append_dp_text(slint_f!("SM4 加密：{}", const_hex::encode(ct)));
+  })
+  .unwrap();
+}
+
+async fn handle_sm4_dec_response(
+  frame_length: usize,
+  no_head_frame: &[u8],
+  weak_app: Weak<AppWindow>,
+) {
+  info!("SM4 解密响应");
+  let mut pt = vec![0; frame_length - FRM_HEAD_LEN - FRM_TAIL_LEN];
+  pt.clone_from_slice(&no_head_frame[..no_head_frame.len() - FRM_TAIL_LEN]);
+  invoke_from_event_loop(move || {
+    weak_app
+      .unwrap()
+      .global::<Options>()
+      .invoke_append_dp_text(slint_f!("SM4 解密：{}", const_hex::encode(pt)));
+  })
+  .unwrap();
+}
+
 pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppWindow>) {
-  let mut buf = BytesMut::from([0u8; 65536].as_slice());
-  debug!("Start to listen.");
+  let mut buf = BytesMut::with_capacity(2 << 20);
+  debug!("监听端口中……");
   loop {
     tokio::time::sleep(Duration::from_millis(0)).await;
-    if 0 == sp.bytes_to_read().unwrap() {
-      continue;
+    {
+      let btor = sp.bytes_to_read().unwrap() as usize;
+      if 0 == btor {
+        continue;
+      }
+      debug!("有 {} 字节数据可读", btor);
+      let mut tmp_buf = vec![0u8; btor];
+      if let Err(e) = sp.read_exact(&mut tmp_buf) {
+        mk_err_str(e, "读取串口数据失败");
+      };
+      debug!("已读取数据：{:?}", const_hex::encode(&tmp_buf));
+      buf.extend_from_slice(&tmp_buf);
+      debug!("缓冲区：{:?}", const_hex::encode(&buf));
     }
-    match sp.read(&mut buf) {
-      Ok(num) => {
-        debug!(num = num, "num");
-        debug!(buf = ?buf[..num], "buf");
-        if num < FRM_HEAD_LEN + FRM_TAIL_LEN || num > FRM_MAX_LEN {
-          continue;
-        }
-        if FRM_START_FLAG != buf.get_u8() {
-          buf.clear();
-          continue;
-        }
-        let len = buf.get_u16() as usize;
-        debug!(len = len, "len");
-        let tp = buf.get_u8();
-        debug!(tp = tp, "tp");
-        if FRM_PRESERVE_FLAG != buf.get_u8() {
-          buf.clear();
-          continue;
-        }
-        debug!(buf=?buf[..num]);
-        match tp.try_into().unwrap() {
-          OpFlag::Key => {
-            if FRM_HEAD_LEN + 2 + FRM_TAIL_LEN != len {
-              debug!("Incorrect response len!");
-              buf.clear();
-              continue;
-            }
-            if 0 == buf.get_u8() && 1 == buf.get_u8() {
-              let weak_app = weak_app.clone();
-              invoke_from_event_loop(move || {
-                weak_app.unwrap().global::<Options>().set_key_ready(true);
-              })
-              .unwrap();
-            } else {
-              debug!("Incorrect key flag!");
-              buf.clear();
-              continue;
-            }
-          }
-          OpFlag::Sm3 => {
-            if len != FRM_HEAD_LEN + SM3_HASH_LEN + FRM_TAIL_LEN {
-              debug!("Error sm3 len!");
-              buf.clear();
-              continue;
-            }
 
-            let mut hash = vec![0u8; SM3_HASH_LEN];
-            hash.clone_from_slice(&buf[..SM3_HASH_LEN]);
-            let weak_app = weak_app.clone();
-            invoke_from_event_loop(move || {
-              weak_app
-                .unwrap()
-                .global::<Options>()
-                .invoke_append_dp_text(const_hex::encode(hash).into());
-            })
-            .unwrap();
-          }
-          OpFlag::Sm4Enc => {
-            let weak_app = weak_app.clone();
-            let mut ct = vec![0; len - FRM_HEAD_LEN - FRM_TAIL_LEN];
-            ct.clone_from_slice(&buf[..len - FRM_HEAD_LEN - FRM_TAIL_LEN]);
-            invoke_from_event_loop(move || {
-              weak_app
-                .unwrap()
-                .global::<Options>()
-                .invoke_append_dp_text(const_hex::encode(ct).into());
-            })
-            .unwrap();
-          }
-          OpFlag::Sm4Dec => {
-            let weak_app = weak_app.clone();
-            let mut pt = vec![0; len - FRM_HEAD_LEN - FRM_TAIL_LEN];
-            pt.clone_from_slice(&buf[..len - FRM_HEAD_LEN - FRM_TAIL_LEN]);
-            invoke_from_event_loop(move || {
-              weak_app
-                .unwrap()
-                .global::<Options>()
-                .invoke_append_dp_text(const_hex::encode(pt).into());
-            })
-            .unwrap();
-          }
+    let mut cursor = 0usize;
+    while buf.len() >= FRM_MIN_LEN {
+      if FRM_START_FLAG != buf[cursor] {
+        if cursor == buf.len() - 1 {
+          debug!("未找到帧起始位，清空缓冲区");
+          buf.clear();
+          break;
+        }
+        cursor += 1;
+        continue;
+      }
+      let _ = buf.split_to(cursor);
+      info!("发现帧起始位：{:?}", const_hex::encode(&buf));
+      let frame_length = u16::from_be_bytes([buf[1], buf[2]]) as usize;
+      assert!(FRM_MIN_LEN <= frame_length && frame_length <= FRM_MAX_LEN);
+      debug!("解析得帧长度：{}", frame_length);
+      if frame_length > buf.len() {
+        warn!("帧长度 {} 大于剩余有效数据长度 {}，继续等待数据", frame_length, buf.len() + 3);
+        break;
+      }
+      let frame = buf.split_to(frame_length);
+      debug!("帧：{:?}", const_hex::encode(&frame));
+      let no_head_frame = &frame[FRM_HEAD_LEN..];
+
+      match frame[3].try_into().unwrap() {
+        OpFlag::Key => handle_key_response(frame_length, &no_head_frame, weak_app.clone()).await,
+        OpFlag::Sm3 => handle_sm3_response(frame_length, &no_head_frame, weak_app.clone()).await,
+        OpFlag::Sm4Enc => {
+          handle_sm4_enc_response(frame_length, &no_head_frame, weak_app.clone()).await
+        }
+        OpFlag::Sm4Dec => {
+          handle_sm4_dec_response(frame_length, &no_head_frame, weak_app.clone()).await
         }
       }
-      Err(e) => {
-        debug!("{}", mk_err_str(e, "Failed to read bytes!"));
-      }
-    };
+    }
   }
 }

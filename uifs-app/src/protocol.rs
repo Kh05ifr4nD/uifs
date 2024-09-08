@@ -81,7 +81,6 @@ pub fn sm4_enc_ecb(ct: &[u8]) -> Bytes {
 
 pub fn sm4_dec_cbc(ct: &[u8], iv: &[u8; 16]) -> Bytes {
   let frm_len = FRM_HEAD_LEN + ct.len() + 1 + 16 + FRM_TAIL_LEN;
-
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
   buf.put_u16(frm_len as u16);
