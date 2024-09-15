@@ -41,22 +41,19 @@ async fn main() -> Rst<()> {
   let app = match AppWindow::new() {
     Ok(t) => t,
     Err(e) => {
-      let e = mk_err_str(e, "Failed to initialize app_window!");
+      let e = mk_err_str(e, "应用窗口初始化失败");
       error!("{e}");
       we!("{e}");
     }
   };
 
   WEAK_APP.with(|weak| {
-    if let Err(_) = weak.set(app.as_weak()) {
-      error!("Failed to get weak pointer!");
-      panic!("Failed to get weak pointer!");
-    };
+    let _ = weak.set(app.as_weak());
   });
 
   match serialport::available_ports() {
     Ok(all_sps) => {
-      debug!(all_sps = ?all_sps, "Got available serial ports.");
+      debug!(all_sps = ?all_sps, "可用串口查询成功");
       let slint_sps: Vec<_> = all_sps
         .iter()
         .map(|sp| {
@@ -70,10 +67,10 @@ async fn main() -> Rst<()> {
 
       app.global::<Options>().set_sps(ModelRc::from(slint_sps.as_slice()));
       ALL_SPS.with(|oc| oc.set(all_sps).unwrap());
-      trace!("Serial ports initialization finished.");
+      trace!("串口列表设置成功");
     }
     Err(e) => {
-      let e = mk_err_str(e, "Failed to get serial ports!");
+      let e = mk_err_str(e, "无法获取可用串口");
       error!("{e}");
       we!("{e}");
     }
@@ -99,7 +96,7 @@ async fn main() -> Rst<()> {
           CUR_SP.with_borrow_mut(|sp|{
             sp.replace(replace_sp);
           });
-          info!(sel_sp_idx = sel_sp_idx, sel_sp = ?sel_sp, "Successfully opened selected sp.");
+          info!(sel_sp_idx = sel_sp_idx, sel_sp = ?sel_sp, "成功打开选择的串口");
           WEAK_APP.with(|w|{
             let w = w.get().unwrap().clone();
             CUR_LSN_HNDLR.with(|hndlr|{
@@ -112,7 +109,7 @@ async fn main() -> Rst<()> {
           rst = true;
         }
         Err(e) => {
-          warn!(sel_sp_idx = sel_sp_idx, sel_sp = ?sel_sp, "{}", mk_err_str(e, "Failed to open selected sp!"));
+          warn!(sel_sp_idx = sel_sp_idx, sel_sp = ?sel_sp, "{}", mk_err_str(e, "无法打开此串口"));
         }
       };
     });
@@ -122,121 +119,119 @@ async fn main() -> Rst<()> {
   app.global::<Options>().on_key_send(|k| {
     let bytes = k.as_bytes();
     if 16 != bytes.len() {
-      warn!(key_len = bytes.len(), "Incorrect key length!");
+      warn!(key_len = bytes.len(), "输入密钥长不为 16 字节");
       return;
     }
     if let Err(e) = const_hex::check(bytes) {
-      warn!(key = ?k, "{}", mk_err_str(e, "Incorrect key format!"));
+      warn!(key = ?k, "{}", mk_err_str(e, "出现非密钥字符"));
       return;
     }
 
     let send_key = key(bytes.try_into().unwrap());
-    debug!(send_key=?send_key);
+    debug!(send_key = ?send_key, "发送密钥");
 
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_key.as_ref()) {
-        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send key to FPGA!"));
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "密钥发送失败"));
       };
     })
   });
 
   app.global::<Options>().on_send_test(|msg| {
-    info!(msg = msg.as_str(), "msg");
     if msg.len() > TX_MSG_MAX_LEN {
-      warn!(msg_len = msg.len(), "Message is too long!");
+      warn!(msg_len = msg.len(), "消息过长");
       return;
     };
+    debug!(msg = ?msg.as_bytes(), "发送测试消息");
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(msg.as_bytes()) {
-        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "测试消息发送失败"));
       };
     });
   });
 
   app.global::<Options>().on_send_sm3(|msg| {
     if msg.len() > TX_MSG_MAX_LEN {
-      warn!(msg_len = msg.len(), "Message is too long!");
+      warn!(msg_len = msg.len(), "消息过长");
       return;
     };
 
     let send_msg = sm3(msg.as_bytes());
-    debug!(send_msg=?send_msg.as_ref());
+    info!(send_msg = ?send_msg, "发送 SM3 消息");
 
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(send_msg.as_ref()) {
-        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "消息发送失败"));
       };
     });
   });
 
   app.global::<Options>().on_send_sm4e_cbc(|pt, iv| {
     if 16 != iv.len() {
-      let e = "Incorrect iv length!";
-      error!("{e}");
+      warn!(iv = ?iv, "输入初始向量长不为 16 字节");
       return;
     };
 
     let send_pt = sm4_enc_cbc(pt.as_bytes().try_into().unwrap(), iv.as_bytes().try_into().unwrap());
-    debug!(send_pt=?send_pt);
+    debug!(send_pt =? send_pt);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
-        let e = mk_err_str(e, "Failed to send message to FPGA!");
-        warn!(cur_sp = ?cur_sp, "{e}");
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "CBC 加密请求发送失败"));
       };
     })
   });
 
   app.global::<Options>().on_send_sm4e_ecb(|pt| {
     let send_pt = sm4_enc_ecb(pt.as_bytes());
-    debug!(send_pt=?send_pt);
+    debug!(send_pt =? send_pt);
 
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
-        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "ECB 加密请求发送失败"));
       };
     })
   });
 
   app.global::<Options>().on_send_sm4d_cbc(|ct, iv| {
     if 16 != iv.len() {
-      let e = "Incorrect iv length!";
-      error!("{e}");
+      let e = "输入初始向量长不为 16 字节";
+      warn!("{e}");
       return;
     };
     let send_ct = sm4_dec_cbc(ct.as_bytes(), iv.as_bytes().try_into().unwrap());
-    debug!(send_ct=?send_ct);
+    debug!(send_ct =? send_ct);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_ct) {
-        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "CBC 解密请求发送失败"));
       };
     })
   });
 
   app.global::<Options>().on_send_sm4d_ecb(|ct| {
     let send_ct = sm4_dec_ecb(ct.as_bytes());
-    debug!(send_ct=?send_ct);
+    debug!(send_ct =? send_ct);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_ct) {
-        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "Failed to send message to FPGA!"));
+        error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "ECB 解密请求发送失败"));
       };
     })
   });
 
-  trace!("Start running GUI.");
-
   if let Err(e) = app.show() {
-    let e = mk_err_str(e, "Failed to show app_window!");
+    let e = mk_err_str(e, "窗口打开失败");
     error!("{e}");
     we!("{e}");
   };
+
+  trace!("开始运行 GUI");
 
   if let Err(e) = slint::run_event_loop() {
-    let e = mk_err_str(e, "Failed to run slint event loop!");
+    let e = mk_err_str(e, "事件循环运行失败");
     error!("{e}");
     we!("{e}");
   };
 
-  debug!("Application finished.");
+  trace!("应用结束");
 
   Ok(())
 }

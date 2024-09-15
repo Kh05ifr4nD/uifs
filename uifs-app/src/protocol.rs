@@ -49,7 +49,6 @@ pub fn sm3(m: &[u8]) -> Bytes {
 pub fn sm4_enc_cbc(pt: &[u8], iv: &[u8; 16]) -> Bytes {
   const BLOCK_BYTES_LEN: usize = 16;
   let pad_len = (pt.len() + BLOCK_BYTES_LEN - 1) & !(BLOCK_BYTES_LEN - 1);
-
   let frm_len = FRM_HEAD_LEN + pad_len + 1 + 16 + FRM_TAIL_LEN;
   let mut buf = BytesMut::with_capacity(frm_len);
   buf.put_u8(FRM_START_FLAG);
