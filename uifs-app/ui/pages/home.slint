@@ -59,7 +59,7 @@ export component HomePage inherits HorizontalLayout {
 
                     open-button := Button {
                         enabled: 0 != Options.sps.length;
-                        text: self.checked ? "已连接" : "未打开";
+                        text: self.checked ? "已连接" : "打开";
                         width: 200px;
                         clicked => {
                             self.checked = Options.sp-open(sp-box.current-index);
