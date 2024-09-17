@@ -81,7 +81,7 @@ export component HomePage inherits HorizontalLayout {
                     }
 
                     op-box := ComboBox {
-                        model: ["回显", "SM3 散列", "SM4 加密", "SM4 解密"];
+                        model: ["串口回显", "SM3 散列", "SM4 加密", "SM4 解密"];
                         selected(tp) => {
                             if (self.model[0] == tp) {
                                 Options.lsn();
