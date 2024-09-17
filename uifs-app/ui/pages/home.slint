@@ -9,6 +9,8 @@ export global Options {
     in property <[string]> sps;
     out property <string> dp-text;
     callback append-dp-text(string);
+    callback lsn();
+    callback parse();
     callback key-send(string);
     callback send-test(string);
     callback send-sm3(string);
@@ -79,7 +81,14 @@ export component HomePage inherits HorizontalLayout {
                     }
 
                     op-box := ComboBox {
-                        model: ["测试", "SM3 散列", "SM4 加密", "SM4 解密"];
+                        model: ["回显", "SM3 散列", "SM4 加密", "SM4 解密"];
+                        selected(tp) => {
+                            if (self.model[0] == tp) {
+                                Options.lsn();
+                            } else {
+                                Options.parse();
+                            }
+                        }
                     }
                 }
             }

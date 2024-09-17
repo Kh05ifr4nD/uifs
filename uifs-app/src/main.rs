@@ -1,5 +1,5 @@
 slint::include_modules!();
-
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod logger;
 mod protocol;
 mod receiver;
@@ -20,8 +20,11 @@ thread_local! {
   static WEAK_APP: OnceCell<Weak<AppWindow>> = OnceCell::new();
 }
 
+use core::sync::atomic::AtomicBool;
 use core::sync::atomic::AtomicI32;
+use core::sync::atomic::Ordering::Relaxed;
 static CUR_SP_IDX: AtomicI32 = AtomicI32::new(-1);
+static CUR_MODE: AtomicBool = AtomicBool::new(false);
 
 #[tokio::main(worker_threads = 1)]
 async fn main() -> Rst<()> {
@@ -77,7 +80,6 @@ async fn main() -> Rst<()> {
   };
 
   app.global::<Options>().on_sp_open(|sel_sp_idx| {
-    use core::sync::atomic::Ordering::Relaxed;
     if sel_sp_idx == CUR_SP_IDX.load(Relaxed) {
       return true;
     };
@@ -87,21 +89,18 @@ async fn main() -> Rst<()> {
     ALL_SPS.with(|oc| {
       let all_sps = oc.get().unwrap();
       let sel_sp = &all_sps[sel_sp_idx as usize];
-      match serialport::new(sel_sp.port_name.as_str(), SP_BAUD_RATE)
-        .timeout(SP_TIMEOUT)
-        .open()
-      {
+      match serialport::new(sel_sp.port_name.as_str(), SP_BAUD_RATE).timeout(SP_TIMEOUT).open() {
         Ok(cur_sp) => {
           let replace_sp = cur_sp.try_clone().unwrap();
-          CUR_SP.with_borrow_mut(|sp|{
+          CUR_SP.with_borrow_mut(|sp| {
             sp.replace(replace_sp);
           });
           info!(sel_sp_idx = sel_sp_idx, sel_sp = ?sel_sp, "成功打开选择的串口");
-          WEAK_APP.with(|w|{
+          WEAK_APP.with(|w| {
             let w = w.get().unwrap().clone();
-            CUR_LSN_HNDLR.with(|hndlr|{
-              let lsn_task = tokio::spawn(receiver::lsn_sp(cur_sp,w));
-              hndlr.replace(Some(lsn_task)).inspect(|h|h.abort());
+            CUR_LSN_HNDLR.with(|hndlr| {
+              let lsn_task = tokio::spawn(receiver::lsn_sp(cur_sp, w));
+              hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
             });
           });
 
@@ -114,6 +113,38 @@ async fn main() -> Rst<()> {
       };
     });
     rst
+  });
+
+  app.global::<Options>().on_lsn(|| {
+    if true == CUR_MODE.load(Relaxed) {
+      CUR_SP.with_borrow_mut(|sp| {
+        let sp = sp.as_mut().unwrap().try_clone().unwrap();
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          CUR_LSN_HNDLR.with(|hndlr| {
+            let lsn_task = tokio::spawn(receiver::lsn_sp(sp, w));
+            hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
+          });
+        });
+      });
+    }
+    CUR_MODE.store(false, Relaxed);
+  });
+
+  app.global::<Options>().on_parse(|| {
+    if false == CUR_MODE.load(Relaxed) {
+      CUR_SP.with_borrow_mut(|sp| {
+        let sp = sp.as_mut().unwrap().try_clone().unwrap();
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          CUR_LSN_HNDLR.with(|hndlr| {
+            let lsn_task = tokio::spawn(receiver::parse_sp(sp, w));
+            hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
+          });
+        });
+      });
+    }
+    CUR_MODE.store(true, Relaxed);
   });
 
   app.global::<Options>().on_key_send(|k| {

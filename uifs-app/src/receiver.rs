@@ -77,8 +77,33 @@ async fn handle_sm4_dec_response(
 }
 
 pub async fn lsn_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppWindow>) {
+  debug!("监听端口中……（回显）");
+  loop {
+    tokio::time::sleep(Duration::from_millis(0)).await;
+    let btor = sp.bytes_to_read().unwrap() as usize;
+    if 0 == btor {
+      continue;
+    }
+    debug!("有 {} 字节数据可读", btor);
+    let mut buf = vec![0u8; btor];
+    if let Err(e) = sp.read_exact(&mut buf) {
+      mk_err_str(e, "读取串口数据失败");
+    };
+    debug!("已读取数据：{:?}", const_hex::encode(&buf));
+    let weak_app = weak_app.clone();
+    invoke_from_event_loop(move || {
+      weak_app
+        .unwrap()
+        .global::<Options>()
+        .invoke_append_dp_text(slint_f!("回显：{}", String::from_utf8_lossy(&buf)));
+    })
+    .unwrap();
+  }
+}
+
+pub async fn parse_sp(mut sp: Box<dyn serialport::SerialPort>, weak_app: Weak<AppWindow>) {
   let mut buf = BytesMut::with_capacity(2 << 20);
-  debug!("监听端口中……");
+  debug!("监听端口中……（解析）");
   loop {
     tokio::time::sleep(Duration::from_millis(0)).await;
     {
