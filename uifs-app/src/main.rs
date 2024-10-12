@@ -6,7 +6,7 @@ mod protocol;
 mod receiver;
 
 use serialport::{SerialPort, SerialPortInfo, SerialPortType};
-use slint::{ModelRc, Weak};
+use slint::{invoke_from_event_loop, ModelRc, Weak};
 
 use tracing::{debug, error, info, trace, warn};
 use uifs_app::{mk_err_str, slint_f, we, Opt, Rst, SP_BAUD_RATE, SP_TIMEOUT, TX_MSG_MAX_LEN};
@@ -21,11 +21,11 @@ thread_local! {
   static WEAK_APP: OnceCell<Weak<AppWindow>> = OnceCell::new();
 }
 
-use core::sync::atomic::AtomicBool;
 use core::sync::atomic::AtomicI32;
 use core::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::AtomicU8;
 static CUR_SP_IDX: AtomicI32 = AtomicI32::new(-1);
-static CUR_MODE: AtomicBool = AtomicBool::new(false);
+static CUR_MODE: AtomicU8 = AtomicU8::new(0);
 
 #[tokio::main(worker_threads = 1)]
 async fn main() -> Rst<()> {
@@ -117,55 +117,85 @@ async fn main() -> Rst<()> {
   });
 
   app.global::<Options>().on_lsn(|| {
-    if true == CUR_MODE.load(Relaxed) {
+    if 0 != CUR_MODE.load(Relaxed) {
       CUR_SP.with_borrow_mut(|sp| {
-        let sp = sp.as_mut().unwrap().try_clone().unwrap();
-        WEAK_APP.with(|w| {
-          let w = w.get().unwrap().clone();
-          CUR_LSN_HNDLR.with(|hndlr| {
-            let lsn_task = tokio::spawn(receiver::lsn_sp(sp, w));
-            hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
+        if let Some(sp) = sp.as_mut() {
+          let sp = sp.try_clone().unwrap();
+          WEAK_APP.with(|w| {
+            let w = w.get().unwrap().clone();
+            CUR_LSN_HNDLR.with(|hndlr| {
+              let lsn_task = tokio::spawn(receiver::lsn_sp(sp, w));
+              hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
+            });
           });
-        });
+          CUR_MODE.store(0, Relaxed);
+        }
       });
     }
-    CUR_MODE.store(false, Relaxed);
   });
 
-  app.global::<Options>().on_parse(|| {
-    if false == CUR_MODE.load(Relaxed) {
-      CUR_SP.with_borrow_mut(|sp| {
-        let sp = sp.as_mut().unwrap().try_clone().unwrap();
+  app.global::<Options>().on_parse(|chat| {
+    CUR_SP.with_borrow_mut(|sp| {
+      if let Some(sp) = sp.as_mut() {
+        let sp = sp.try_clone().unwrap();
         WEAK_APP.with(|w| {
           let w = w.get().unwrap().clone();
           CUR_LSN_HNDLR.with(|hndlr| {
-            let lsn_task = tokio::spawn(receiver::parse_sp(sp, w));
+            let lsn_task = tokio::spawn(receiver::parse_sp(sp, w, chat));
             hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
           });
         });
+        CUR_MODE.store(1, Relaxed);
+      }
+    });
+  });
+
+  app.global::<Options>().on_obsr(|| {
+    if 2 != CUR_MODE.load(Relaxed) {
+      CUR_SP.with_borrow_mut(|sp| {
+        if let Some(sp) = sp.as_mut() {
+          let sp = sp.try_clone().unwrap();
+          WEAK_APP.with(|w| {
+            let w = w.get().unwrap().clone();
+            CUR_LSN_HNDLR.with(|hndlr| {
+              let lsn_task = tokio::spawn(receiver::obsr_sp(sp, w));
+              hndlr.replace(Some(lsn_task)).inspect(|h| h.abort());
+            });
+          });
+          CUR_MODE.store(2, Relaxed);
+        }
       });
     }
-    CUR_MODE.store(true, Relaxed);
   });
 
   app.global::<Options>().on_key_send(|k| {
     let bytes = k.as_bytes();
-    if 16 != bytes.len() {
-      warn!(key_len = bytes.len(), "输入密钥长不为 16 字节");
+    if 32 != bytes.len() {
+      warn!(key_len = bytes.len(), "输入密钥长不为 128 位");
       return;
     }
     if let Err(e) = const_hex::check(bytes) {
       warn!(key = ?k, "{}", mk_err_str(e, "出现非密钥字符"));
       return;
     }
+    let bytes = const_hex::decode(k.clone()).unwrap();
 
-    let send_key = key(bytes.try_into().unwrap());
+    let send_key = key(bytes.as_slice().try_into().unwrap());
+
     debug!(send_key = ?send_key, "发送密钥");
 
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_key.as_ref()) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "密钥发送失败"));
-      };
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!("{}：{}", "密钥注入", k));
+          })
+          .unwrap();
+        })
+      }
     })
   });
 
@@ -178,7 +208,19 @@ async fn main() -> Rst<()> {
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(msg.as_bytes()) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "测试消息发送失败"));
-      };
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              "测试消息",
+              msg
+            ));
+          })
+          .unwrap();
+        })
+      }
     });
   });
 
@@ -194,58 +236,145 @@ async fn main() -> Rst<()> {
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(send_msg.as_ref()) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "消息发送失败"));
-      };
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              "消息",
+              msg
+            ));
+          })
+          .unwrap();
+        })
+      }
     });
   });
 
   app.global::<Options>().on_send_sm4e_cbc(|pt, iv| {
-    if 16 != iv.len() {
-      warn!(iv = ?iv, "输入初始向量长不为 16 字节");
+    if 32 != iv.len() {
+      warn!(iv = ?iv, "输入初始向量长不为 128 位");
       return;
     };
+    let iv = const_hex::decode(iv).unwrap();
 
-    let send_pt = sm4_enc_cbc(pt.as_bytes().try_into().unwrap(), iv.as_bytes().try_into().unwrap());
+    let send_pt = sm4_enc_cbc(pt.as_bytes().try_into().unwrap(), iv.as_slice().try_into().unwrap());
     debug!(send_pt =? send_pt);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "CBC 加密请求发送失败"));
-      };
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              "明文",
+              pt
+            ));
+          })
+          .unwrap();
+        })
+      }
     })
   });
 
   app.global::<Options>().on_send_sm4e_ecb(|pt| {
     let send_pt = sm4_enc_ecb(pt.as_bytes());
-    debug!(send_pt =? send_pt);
+    debug!(send_pt =? send_pt[..]);
 
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
         warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "ECB 加密请求发送失败"));
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              "明文",
+              pt
+            ));
+          })
+          .unwrap();
+        })
+      };
+    })
+  });
+
+  app.global::<Options>().on_chat_send_sm4e_ecb(|pt| {
+    let send_pt = sm4_enc_ecb(pt.as_bytes());
+    debug!(send_pt =? send_pt[..]);
+
+    CUR_SP.with_borrow_mut(|cur_sp| {
+      if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_pt) {
+        warn!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "ECB 加密请求发送失败"));
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              if w.unwrap().global::<Options>().get_name() { "Bob" } else { "Alice" },
+              pt
+            ));
+          })
+          .unwrap();
+        })
       };
     })
   });
 
   app.global::<Options>().on_send_sm4d_cbc(|ct, iv| {
-    if 16 != iv.len() {
-      let e = "输入初始向量长不为 16 字节";
+    if 32 != iv.len() {
+      let e = "输入初始向量长不为 128 位";
       warn!("{e}");
       return;
     };
-    let send_ct = sm4_dec_cbc(ct.as_bytes(), iv.as_bytes().try_into().unwrap());
+    let ct_bytes = const_hex::decode(ct.clone()).unwrap();
+    let iv = const_hex::decode(iv).unwrap();
+    let send_ct = sm4_dec_cbc(ct_bytes.as_slice(), iv.as_slice().try_into().unwrap());
     debug!(send_ct =? send_ct);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_ct) {
         error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "CBC 解密请求发送失败"));
-      };
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              "密文",
+              ct
+            ));
+          })
+          .unwrap();
+        })
+      }
     })
   });
 
   app.global::<Options>().on_send_sm4d_ecb(|ct| {
-    let send_ct = sm4_dec_ecb(ct.as_bytes());
+    let ct_bytes = const_hex::decode(ct.clone()).unwrap();
+    let send_ct = sm4_dec_ecb(ct_bytes.as_slice());
     debug!(send_ct =? send_ct);
     CUR_SP.with_borrow_mut(|cur_sp| {
       if let Err(e) = cur_sp.as_mut().unwrap().write_all(&send_ct) {
         error!(cur_sp = ?cur_sp, "{}", mk_err_str(e, "ECB 解密请求发送失败"));
-      };
+      } else {
+        WEAK_APP.with(|w| {
+          let w = w.get().unwrap().clone();
+          invoke_from_event_loop(move || {
+            w.unwrap().global::<Options>().invoke_append_dp_text(slint_f!(
+              "{}：{}",
+              "密文",
+              ct
+            ));
+          })
+          .unwrap();
+        })
+      }
     })
   });
 

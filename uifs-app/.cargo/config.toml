@@ -8,5 +8,4 @@ debug = false
 incremental = true
 lto = "fat"
 opt-level = "z"
-panic = "abort"
 strip = "symbols"

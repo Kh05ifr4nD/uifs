@@ -9,4 +9,11 @@ fn main() {
       core::any::type_name_of_val(&e),
     );
   });
+  // build.rs
+
+  if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows" {
+    let mut res = winresource::WindowsResource::new();
+    res.set_icon("./ui/resources/icons/icon.ico");
+    res.compile().unwrap();
+  }
 }

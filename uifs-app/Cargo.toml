@@ -11,6 +11,8 @@ repository = { workspace = true }
 license-file = { workspace = true }
 build = "build.rs"
 
+[build-dependencies.winresource]
+version = "0.1"
 
 [dependencies.bytes]
 workspace = true
@@ -61,5 +63,5 @@ slint-build = "1.7.2"
 [features]
 default = [
     "slint/backend-default",
-    "slint/renderer-femtovg"
+    "slint/renderer-femtovg",
 ]
